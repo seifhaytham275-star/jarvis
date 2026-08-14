@@ -2,7 +2,8 @@ import streamlit as st
 from streamlit_mic_recorder import speech_to_text
 from groq import Groq
 
-client = Groq(api_key="حط_مفتاحك_هنا")
+# حط مفتاح الـ API هنا جوه علامتي التنصيص من غير مسافات زيادة
+client = Groq(api_key="حط_المفتاح_هنا")
 st.title("🤖 Jarvis")
 
 if "messages" not in st.session_state:
