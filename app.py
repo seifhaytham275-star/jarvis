@@ -1,8 +1,8 @@
 import streamlit as st
 import google.generativeai as genai
 
-# حط مفتاح Google Gemini API هنا بين علامتي التنصيص
-genai.configure(api_key="حط_مفتاح_جيميني_هنا")
+# إعداد مفتاح جوجل جيميني
+genai.configure(api_key="AQ.Ab8RN6JQ97NtHF9qPklEauCrAESCvrpOPlHYo7sRU1hpgWj4Jw")
 
 st.title("🤖 Jarvis")
 
