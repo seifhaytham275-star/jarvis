@@ -1,8 +1,8 @@
 import streamlit as st
 import google.generativeai as genai
 
-# إعداد مفتاح جوجل جيميني
-genai.configure(api_key="AQ.Ab8RN6JQ97NtHF9qPklEauCrAESCvrpOPlHYo7sRU1hpgWj4Jw")
+# إعداد مفتاح جوجل جيميني باستخدام إعدادات Streamlit الآمنة
+genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
 st.title("🤖 Jarvis")
 
