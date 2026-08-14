@@ -1,33 +1,33 @@
 import streamlit as st
 import google.generativeai as genai
 
-# إعداد مفتاح جوجل جيميني الآمن
+# إعداد مفتاح جوجل جيميني من إعدادات الأمان
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
 st.title("🤖 Jarvis")
 
-# اختيار موديل جيميني السريع
+# استخدام موديل موثوق وسريع متوافق مع أحدث المكتبات
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-# استخدام اسم جديد تماماً للذاكرة عشان نتخطى أي بيانات قديمة معلقة
+# تهيئة ذاكرة المحادثة
 if "jarvis_chat" not in st.session_state:
     st.session_state.jarvis_chat = model.start_chat(history=[])
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# عرض الرسائل السابقة
+# عرض رسائل الشات السابقة
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# استقبال رسالة جديدة
+# استقبال رسالة جديدة من المستخدم
 if prompt := st.chat_input("...اكتب رسالتك هنا"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # إرسال الرسالة للذكاء الاصطناعي
+    # إرسال الرسالة لجارفيس واستقبال الرد
     response = st.session_state.jarvis_chat.send_message(prompt)
     assistant_response = response.text
 
