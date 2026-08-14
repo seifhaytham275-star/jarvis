@@ -2,8 +2,7 @@ import streamlit as st
 from streamlit_mic_recorder import speech_to_text
 from groq import Groq
 
-client = Groq(api_key="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")
-
+client = Groq(api_key="gsk_5isLLRoFuPsH6QBHo7ULWGdyb3F59U6dda3muhtFapa5urh40Di")
 st.title("🤖 Jarvis")
 
 if "messages" not in st.session_state:
@@ -22,7 +21,7 @@ if prompt:
         st.markdown(prompt)
 
     response = client.chat.completions.create(
-        model="llama3-70b-8192",
+        model="llama-3.3-70b-versatile",
         messages=st.session_state.messages
     )
     
