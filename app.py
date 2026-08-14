@@ -2,7 +2,7 @@ import streamlit as st
 from streamlit_mic_recorder import speech_to_text
 from groq import Groq
 
-client = Groq(api_key="حط_مفتاح_الـ_Groq_هنا")
+client = Groq(api_key="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")
 st.title("🐱‍👤 Jarvis")
 
 if "messages" not in st.session_state:
