@@ -1,31 +1,36 @@
 import streamlit as st
-from streamlit_mic_recorder import speech_to_text
-from groq import Groq
+import google.generativeai as genai
 
-client = Groq(api_key="gsk_5isLLRoFuPsH6QBHo7ULWGdyb3F59U6dda3muhtFapa5urh40Di")
+# حط مفتاح Google Gemini API هنا بين علامتي التنصيص
+genai.configure(api_key="حط_مفتاح_جيميني_هنا")
+
 st.title("🤖 Jarvis")
+
+# اختيار موديل جيميني السريع
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
-audio_text = speech_to_text(language='ar', start_prompt="🎙️ اضغط للتحدث", stop_prompt="...جاري الاستماع", key="mic")
-prompt = st.chat_input("...اكتب رسالتك هنا") or audio_text
-
-if prompt:
+if prompt := st.chat_input("...اكتب رسالتك هنا"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=st.session_state.messages
-    )
+    # تجهيز السجل وتجهيز الرد
+    chat_history = [
+        {"role": "user" if m["role"] == "user" else "model", "parts": [m["content"]]} 
+        for m in st.session_state.messages[:-1]
+    ]
     
-    assistant_response = response.choices[0].message.content
+    chat = model.start_chat(history=chat_history)
+    response = chat.send_message(prompt)
+    assistant_response = response.text
+
     st.session_state.messages.append({"role": "assistant", "content": assistant_response})
     with st.chat_message("assistant"):
         st.markdown(assistant_response)
