@@ -57,11 +57,11 @@ if api_key:
         for m in st.session_state.messages:
             messages_payload.append({"role": m["role"], "content": m["content"]})
 
-        # Generate response using Groq model (Llama 3)
+        # Generate response using Groq model (updated active model)
         try:
             chat_completion = client.chat.completions.create(
                 messages=messages_payload,
-                model="llama3-8b-8192",
+                model="llama-3.1-8b-instant",
                 temperature=0.7,
             )
             response_text = chat_completion.choices[0].message.content
