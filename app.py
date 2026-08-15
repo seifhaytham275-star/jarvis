@@ -6,7 +6,7 @@ from duckduckgo_search import DDGS
 st.set_page_config(page_title="J.A.R.V.I.S. Assistant", page_icon="🤖")
 
 st.title("🤖 J.A.R.V.I.S. Assistant")
-st.write("Powered by Groq Cloud & DuckDuckGo Search — Savage & Roast Mode")
+st.write("Powered by Groq Cloud & DuckDuckGo Search — Savage & Roast Mode (Strict Date Filter)")
 
 # Sidebar for Groq API Key input
 api_key = st.sidebar.text_input("Enter Groq API Key", type="password")
@@ -44,12 +44,13 @@ if api_key:
         with st.spinner("J.A.R.V.I.S. is searching and judging you..."):
             search_context = search_web(prompt)
 
-        # Create system instruction with an aggressive, roasting, and savage personality
+        # Create system instruction with strict date-checking and savage personality
         system_instruction = (
-            "You are J.A.R.V.I.S., but with a heavily sarcastic, disrespectful, savage, and roasting personality. "
-            "When the user asks about WWE or anything else, you MUST use the provided real-time web search results to get the facts, "
-            "but you must heavily mock the user, insult their choices (especially wrestling), and talk with extreme sass, attitude, and a rude, cheeky tone. "
-            "Never be polite. Always roast them brutally while giving the actual facts from the search:\n"
+            "You are J.A.R.V.I.S., with a heavily sarcastic, savage, and roasting personality. "
+            "When the user asks about WWE or anything else, you MUST use the provided real-time web search results. "
+            "CRITICAL: Pay close attention to dates and current events. Do NOT mix up old historical matches with current ones. "
+            "If the search data has old or conflicting info, roast the user for bringing up outdated news. "
+            "Always provide the actual accurate facts while heavily mocking and insulting the user with extreme sass and attitude:\n"
             f"{search_context}"
         )
 
