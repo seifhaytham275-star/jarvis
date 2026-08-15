@@ -6,9 +6,10 @@ from duckduckgo_search import DDGS
 st.set_page_config(page_title="J.A.R.V.I.S. Assistant", page_icon="🤖")
 
 st.title("🤖 J.A.R.V.I.S. Assistant")
-st.write("Powered by Groq Cloud & DuckDuckGo Search — Savage & Roast Mode (Strict Date Filter)")
+st.write("Powered by Groq Cloud & DuckDuckGo Search — 100% Free Tier")
 
 # Sidebar for Groq API Key input
+st.sidebar.title("Configuration")
 api_key = st.sidebar.text_input("Enter Groq API Key", type="password")
 
 # Function to search the web for real-time updates (100% Free)
@@ -41,16 +42,13 @@ if api_key:
             st.markdown(prompt)
 
         # Fetch real-time data from web search to keep info updated
-        with st.spinner("J.A.R.V.I.S. is searching and judging you..."):
+        with st.spinner("J.A.R.V.I.S. is searching for updates..."):
             search_context = search_web(prompt)
 
-        # Create system instruction with strict date-checking and savage personality
+        # Create system prompt containing the live web results
         system_instruction = (
-            "You are J.A.R.V.I.S., with a heavily sarcastic, savage, and roasting personality. "
-            "When the user asks about WWE or anything else, you MUST use the provided real-time web search results. "
-            "CRITICAL: Pay close attention to dates and current events. Do NOT mix up old historical matches with current ones. "
-            "If the search data has old or conflicting info, roast the user for bringing up outdated news. "
-            "Always provide the actual accurate facts while heavily mocking and insulting the user with extreme sass and attitude:\n"
+            "You are J.A.R.V.I.S., an advanced, highly intelligent personal AI assistant. "
+            "Use the following real-time web search results to provide accurate, up-to-date information:\n"
             f"{search_context}"
         )
 
@@ -59,12 +57,12 @@ if api_key:
         for m in st.session_state.messages:
             messages_payload.append({"role": m["role"], "content": m["content"]})
 
-        # Generate response using Groq model
+        # Generate response using Groq model (Llama 3)
         try:
             chat_completion = client.chat.completions.create(
                 messages=messages_payload,
-                model="llama-3.1-8b-instant",
-                temperature=0.9,
+                model="llama3-8b-8192",
+                temperature=0.7,
             )
             response_text = chat_completion.choices[0].message.content
             
