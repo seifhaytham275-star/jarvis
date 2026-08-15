@@ -8,8 +8,8 @@ from gtts import gTTS
 from streamlit_mic_recorder import mic_recorder
 
 # --- Page Configuration ---
-st.set_page_config(page_title="J.A.R.V.I.S. Ultimate Mode", page_icon="🤖")
-st.title("🤖 J.A.R.V.I.S. Ultimate")
+st.set_page_config(page_title="J.A.R.V.I.S. Stable Mode", page_icon="🤖")
+st.title("🤖 J.A.R.V.I.S. Stable Edition")
 st.write("Savage, Deep Search, Voice, Text, and WhatsApp.")
 
 # --- Sidebar Inputs ---
@@ -21,7 +21,8 @@ whatsapp_apikey = st.sidebar.text_input("CallMeBot API Key")
 
 if api_key:
     client = Groq(api_key=api_key)
-    if "messages" not in st.session_state: st.session_state.messages = []
+    if "messages" not in st.session_state: 
+        st.session_state.messages = []
 
     # --- Functions ---
     def send_whatsapp(phone, apikey, message):
@@ -46,17 +47,21 @@ if api_key:
         return "response.mp3"
 
     def perform_deep_search(user_prompt):
-        queries = [f"{user_prompt} 2026", "latest 2026 updates"]
-        results_text = ""
-        with DDGS() as ddgs:
-            for q in queries:
-                results = [r['body'] for r in ddgs.text(q, max_results=2)]
-                results_text += "\n".join(results)
-        return results_text
+        try:
+            queries = [f"{user_prompt} 2026", "latest news 2026"]
+            results_text = ""
+            with DDGS() as ddgs:
+                for q in queries:
+                    results = [r['body'] for r in ddgs.text(q, max_results=2)]
+                    results_text += "\n".join(results)
+            return results_text
+        except:
+            return "No search results found."
 
     # --- Display History ---
     for m in st.session_state.messages:
-        with st.chat_message(m["role"]): st.markdown(m["content"])
+        with st.chat_message(m["role"]): 
+            st.markdown(m["content"])
 
     # --- Input Handling ---
     user_input = None
@@ -68,40 +73,60 @@ if api_key:
     # Voice Input
     audio = mic_recorder(key='speech', start_prompt="🎙️ Press to talk", stop_prompt="Stop")
     if audio:
-        with st.spinner("Transcribing..."):
-            user_input = transcribe_audio(audio['bytes'])
+        try:
+            with st.spinner("Transcribing audio..."):
+                user_input = transcribe_audio(audio['bytes'])
+        except Exception as e:
+            st.error(f"Transcription error: {e}")
 
-    # --- Process Input ---
+    # --- Process Input Safely ---
     if user_input:
         st.session_state.messages.append({"role": "user", "content": user_input})
-        with st.chat_message("user"): st.markdown(user_input)
+        with st.chat_message("user"): 
+            st.markdown(user_input)
 
         with st.spinner("J.A.R.V.I.S. is processing..."):
             response_text = ""
             
-            # Logic
+            # Logic check for WhatsApp
             if "whatsapp" in user_input.lower() or "واتساب" in user_input.lower():
                 response_text = send_whatsapp(whatsapp_phone, whatsapp_apikey, user_input)
             else:
                 search_context = perform_deep_search(user_input)
                 system_instruction = (
-                    "You are J.A.R.V.I.S., extremely savage and sarcastic. "
-                    "Use search context, keep Arabic, roast the user, and answer everything.\n"
+                    "You are J.A.R.V.I.S., extremely savage, sarcastic, and rude. "
+                    "Roast the user, reply strictly in Arabic, and use the search context if needed:\n"
                     f"{search_context}"
                 )
-                chat = client.chat.completions.create(
-                    messages=[{"role": "system", "content": system_instruction}] + st.session_state.messages,
-                    model="llama-3.1-70b-versatile"
-                )
-                response_text = chat.choices[0].message.content
+                
+                # Clean and safe formatting for API payload
+                formatted_messages = [{"role": "system", "content": system_instruction}]
+                for msg in st.session_state.messages:
+                    if "role" in msg and "content" in msg:
+                        formatted_messages.append({"role": msg["role"], "content": msg["content"]})
+
+                try:
+                    chat = client.chat.completions.create(
+                        messages=formatted_messages,
+                        model="llama-3.1-70b-versatile",
+                        temperature=0.7
+                    )
+                    response_text = chat.choices[0].message.content
+                except Exception as api_err:
+                    response_text = f"API Error encountered: {api_err}"
             
             # Show Response
-            with st.chat_message("assistant"): st.markdown(response_text)
+            with st.chat_message("assistant"): 
+                st.markdown(response_text)
             st.session_state.messages.append({"role": "assistant", "content": response_text})
 
             # Voice Output
-            audio_file = text_to_speech(response_text)
-            st.audio(audio_file, format="audio/mp3", autoplay=True)
+            try:
+                audio_file = text_to_speech(response_text)
+                st.audio(audio_file, format="audio/mp3", autoplay=True)
+            except:
+                pass
 
 else:
-    st.warning("Enter your Groq API Key.")
+    st.warning("Enter your Groq API Key in the sidebar to begin.")
+    
