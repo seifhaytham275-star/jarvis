@@ -1,69 +1,77 @@
-import os
 import streamlit as st
 from groq import Groq
+from duckduckgo_search import DDGS
 
-# 1. Page Configuration
-st.set_page_config(page_title="J.A.R.V.I.S.", page_icon="🤖", layout="centered")
+# Page Configuration
+st.set_page_config(page_title="J.A.R.V.I.S. Assistant", page_icon="🤖")
+
 st.title("🤖 J.A.R.V.I.S. Assistant")
-st.caption("Powered by Groq Cloud — 100% Free Tier")
+st.write("Powered by Groq Cloud & DuckDuckGo Search — 100% Free Tier")
 
-# 2. Get API Key safely
-api_key = st.secrets.get("GROQ_API_KEY") or os.environ.get("GROQ_API_KEY")
+# Sidebar for Groq API Key input
+st.sidebar.title("Configuration")
+api_key = st.sidebar.text_input("Enter Groq API Key", type="password")
 
-if not api_key:
-    api_key = st.sidebar.text_input("Groq API Key", type="password", help="Enter your gsk_... key here")
-    if not api_key:
-        st.info("Please enter your free Groq API key (from console.groq.com) in the sidebar to begin.", icon="🔑")
-        st.stop()
+# Function to search the web for real-time updates (100% Free)
+def search_web(query):
+    try:
+        with DDGS() as ddgs:
+            results = [r['body'] for r in ddgs.text(query, max_results=3)]
+            return " ".join(results)
+    except Exception as e:
+        return ""
 
-# 3. Initialize Groq Client
-client = Groq(api_key=api_key)
+if api_key:
+    # Initialize Groq client
+    client = Groq(api_key=api_key)
+    
+    # Initialize chat history in session state if not exists
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
-# 4. J.A.R.V.I.S. System Prompt
-JARVIS_SYSTEM_PROMPT = {
-    "role": "system",
-    "content": (
-        "You are J.A.R.V.I.S., a highly intelligent, polite, and sophisticated AI assistant. "
-        "You speak with refined composure, efficiency, and helpfulness. Address the user "
-        "respectfully and provide accurate, structured, and helpful responses."
-    )
-}
+    # Display prior chat messages
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
-# 5. Initialize Chat History in Session Memory
-if "messages" not in st.session_state:
-    st.session_state.messages = [JARVIS_SYSTEM_PROMPT]
+    # User input prompt
+    if prompt := st.chat_input("How may I assist you today?"):
+        # Append user message to state and display it
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
 
-# 6. Display Chat History (Excluding System Prompt)
-for msg in st.session_state.messages:
-    if msg["role"] != "system":
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+        # Fetch real-time data from web search to keep info updated
+        with st.spinner("J.A.R.V.I.S. is searching for updates..."):
+            search_context = search_web(prompt)
 
-# 7. Chat Input and Streaming Response
-if user_prompt := st.chat_input("How may I assist you today?"):
-    st.session_state.messages.append({"role": "user", "content": user_prompt})
-    with st.chat_message("user"):
-        st.markdown(user_prompt)
+        # Create system prompt containing the live web results
+        system_instruction = (
+            "You are J.A.R.V.I.S., an advanced, highly intelligent personal AI assistant. "
+            "Use the following real-time web search results to provide accurate, up-to-date information:\n"
+            f"{search_context}"
+        )
 
-    with st.chat_message("assistant"):
-        message_placeholder = st.empty()
-        full_response = ""
+        # Prepare messages for Groq API
+        messages_payload = [{"role": "system", "content": system_instruction}]
+        for m in st.session_state.messages:
+            messages_payload.append({"role": m["role"], "content": m["content"]})
 
+        # Generate response using Groq model (Llama 3)
         try:
-            # Free model options: "llama-3.3-70b-versatile" or "deepseek-r1-distill-llama-70b"
-            completion = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=st.session_state.messages,
-                stream=True
+            chat_completion = client.chat.completions.create(
+                messages=messages_payload,
+                model="llama3-8b-8192",
+                temperature=0.7,
             )
-
-            for chunk in completion:
-                content = chunk.choices[0].delta.content or ""
-                full_response += content
-                message_placeholder.markdown(full_response + "▌")
-
-            message_placeholder.markdown(full_response)
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
-
+            response_text = chat_completion.choices[0].message.content
+            
+            # Display assistant response and append to state
+            with st.chat_message("assistant"):
+                st.markdown(response_text)
+            st.session_state.messages.append({"role": "assistant", "content": response_text})
+            
         except Exception as e:
-            st.error(f"Error communicating with Groq API: {e}")
+            st.error(f"An error occurred: {e}")
+else:
+    st.warning("Please enter your Groq API Key in the sidebar to activate J.A.R.V.I.S.")
