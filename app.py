@@ -108,7 +108,7 @@ if api_key:
                 try:
                     chat = client.chat.completions.create(
                         messages=formatted_messages,
-                        model="llama-3.1-70b-versatile",
+                        model="llama-3.3-70b-versatile",
                         temperature=0.7
                     )
                     response_text = chat.choices[0].message.content
@@ -129,4 +129,3 @@ if api_key:
 
 else:
     st.warning("Enter your Groq API Key in the sidebar to begin.")
-    
