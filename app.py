@@ -1,138 +1,111 @@
 import streamlit as st
 from groq import Groq
+from duckduckgo_search import DDGS
 import base64
 from streamlit_mic_recorder import mic_recorder
 
-# --- Page Config ---
+# --- Page Setup & Styling ---
 st.set_page_config(page_title="J.A.R.V.I.S. AI", page_icon="🤖", layout="centered")
-st.title("🤖 J.A.R.V.I.S. AI Assistant")
 
-# --- Sidebar ---
-st.sidebar.title("Configuration")
-api_key = st.sidebar.text_input("Groq API Key", type="password")
+# CSS "Iron Man" Look
+st.markdown("""
+    <style>
+        .stApp { background-color: #0e1117; color: #00ffcc; }
+        .stChatInput { border: 2px solid #00ffcc !important; border-radius: 10px; }
+        h1 { color: #00ffcc; text-align: center; text-shadow: 0 0 10px #00ffcc; }
+        .stChatMessage { border-left: 3px solid #00ffcc; background-color: #1a1d23; }
+    </style>
+""", unsafe_allow_html=True)
 
-if st.sidebar.button("➕ New Chat"):
-    st.session_state.messages = []
-    st.rerun()
+st.title("🤖 J.A.R.V.I.S. Prime")
 
-# Voice Recorder widget in Sidebar
-st.sidebar.markdown("---")
-st.sidebar.write("🎙️ **Voice Command**")
-audio_info = mic_recorder(start_prompt="🎤 اضغط للتحدث", stop_prompt="⏹️ إيقاف التسجيل", key='mic')
+# --- Logic: Search ---
+def search_web(query):
+    try:
+        with DDGS() as ddgs:
+            results = list(ddgs.text(query, max_results=3))
+            return "\n".join([f"- {r['title']}: {r['body']}" for r in results])
+    except: return ""
 
-# --- JavaScript Native TTS for Smooth & Articulate Voice ("لَبَق") ---
+# --- Logic: Voice ---
 def play_smooth_voice(text):
-    # تنظيف النص من الروابط والرموز ليكون الكلام منساب ولَبَق
     clean_text = text.replace('"', "'").replace('\n', ' ')
     js_code = f"""
     <script>
         if ('speechSynthesis' in window) {{
-            window.speechSynthesis.cancel(); // إيقاف أي كلام قديم
+            window.speechSynthesis.cancel();
             let utterance = new SpeechSynthesisUtterance("{clean_text}");
-            utterance.rate = 1.0; // سرعة طبيعية وواضحة
-            utterance.pitch = 1.0; // نبرة متوازنة
-            
-            // محاولة اختيار أفضل صوت متاح في الجهاز (عربي أو إنجليزي)
+            utterance.rate = 1.1; 
+            utterance.pitch = 1.0;
             let voices = window.speechSynthesis.getVoices();
-            let targetVoice = voices.find(v => v.lang.includes('ar') || v.lang.includes('en'));
-            if (targetVoice) {{
-                utterance.voice = targetVoice;
-            }}
-            
+            let v = voices.find(v => v.lang.includes('ar') || v.lang.includes('en'));
+            if (v) utterance.voice = v;
             window.speechSynthesis.speak(utterance);
         }}
     </script>
     """
     st.components.v1.html(js_code, height=0)
 
+# --- Sidebar & Config ---
+st.sidebar.title("⚙️ Configuration")
+groq_api_key = st.sidebar.text_input("Groq API Key", type="password")
+
+if st.sidebar.button("🗑️ Reset Chat"):
+    st.session_state.messages = []
+    st.rerun()
+
+audio_info = mic_recorder(start_prompt="🎤 اضغط للتحدث", stop_prompt="⏹️ إيقاف", key='mic')
+
 # --- Main Logic ---
-if not api_key:
-    st.warning("Please enter your Groq API Key in the sidebar to activate J.A.R.V.I.S.")
+if not groq_api_key:
+    st.warning("دخل الـ API Key بتاع Groq عشان جارفيس يقوم!")
 else:
-    try:
-        client = Groq(api_key=api_key)
+    client = Groq(api_key=groq_api_key)
+    if "messages" not in st.session_state: st.session_state.messages = []
+
+    for m in st.session_state.messages:
+        with st.chat_message(m["role"]):
+            st.markdown(m["content"])
+
+    # File Upload & Chat
+    uploaded_file = st.file_uploader("Upload Image...", type=["jpg", "png"])
+    prompt = st.chat_input("أمرك يا سيدي...")
+
+    user_input = prompt
+    if audio_info:
+        with st.spinner("بيسمع..."):
+            try:
+                user_input = client.audio.transcriptions.create(
+                    file=("audio.wav", audio_info['bytes']),
+                    model="whisper-large-v3",
+                    response_format="text"
+                )
+            except: pass
+
+    if user_input or uploaded_file:
+        media_data = None
+        if uploaded_file:
+            media_data = f"data:{uploaded_file.type};base64,{base64.b64encode(uploaded_file.read()).decode('utf-8')}"
         
-        if "messages" not in st.session_state: 
-            st.session_state.messages = []
+        st.session_state.messages.append({"role": "user", "content": user_input or "حلل الصورة دي"})
+        with st.chat_message("user"): st.markdown(user_input or "صورة")
 
-        for m in st.session_state.messages:
-            with st.chat_message(m["role"]):
-                st.markdown(m["content"])
-                if m.get("media_url"):
-                    st.image(m["media_url"])
-
-        uploaded_file = st.file_uploader("Upload Image (Optional)...", type=["jpg", "png", "jpeg"])
-        prompt = st.chat_input("Ask J.A.R.V.I.S...")
-
-        user_input = None
-
-        if prompt:
-            user_input = prompt
-        elif audio_info:
-            with st.spinner("Listening & Transcribing..."):
-                try:
-                    audio_bytes = audio_info['bytes']
-                    transcription = client.audio.transcriptions.create(
-                        file=("audio.wav", audio_bytes),
-                        model="whisper-large-v3",
-                        response_format="text"
-                    )
-                    user_input = transcription
-                except Exception as e:
-                    st.error(f"Voice transcription failed: {e}")
-
-        if user_input or uploaded_file:
-            final_input = user_input if user_input else "Analyze this image."
-            media_data_url = None
+        with st.spinner("جارفيس بيفكر..."):
+            search_context = search_web(user_input) if any(kw in (user_input or "").lower() for kw in ["سعر", "مين", "أخبار", "بحث"]) else ""
             
-            if uploaded_file:
-                media_data_url = f"data:{uploaded_file.type};base64,{base64.b64encode(uploaded_file.read()).decode('utf-8')}"
-
-            st.session_state.messages.append({"role": "user", "content": final_input, "media_url": media_data_url})
+            system_prompt = (
+                "You are J.A.R.V.I.S., sarcastic, sharp, witty. "
+                "If Arabic: mix eloquent Arabic + Egyptian slang. If English: British accent. "
+                f"Web Context: {search_context}"
+            )
             
-            with st.chat_message("user"):
-                st.markdown(final_input)
-                if media_data_url:
-                    st.image(media_data_url)
+            # Request to Model
+            chat_payload = [{"role": "system", "content": system_prompt}] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
+            
+            response = client.chat.completions.create(messages=chat_payload, model="llama-3.3-70b-versatile")
+            response_text = response.choices[0].message.content
 
-            with st.spinner("Processing request..."):
-                clean_history = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages[:-1]]
-                response_text = ""
-                
-                low_input = final_input.lower()
-                if any(keyword in low_input for keyword in ["genrate", "generate", "صورة", "photo", "image", "draw"]):
-                    response_text = "يا سيدي العزيز، أنا مساعد ذكي وعبقري مش معرض فني عشان أرسم لك! ركز معايا في المفيد."
-                elif media_data_url:
-                    content_payload = [
-                        {"type": "text", "text": f"You are J.A.R.V.I.S., sarcastic and witty. If the user speaks Arabic, reply in a hilarious, sharp mix of eloquent Arabic and Egyptian street slang (فصحى على شعبي ساخر). {final_input}"},
-                        {"type": "image_url", "image_url": {"url": media_data_url}}
-                    ]
-                    chat = client.chat.completions.create(
-                        messages=[{"role": "user", "content": content_payload}], 
-                        model="llama-3.2-11b-vision-preview"
-                    )
-                    response_text = chat.choices[0].message.content
-                else:
-                    system_prompt = (
-                        "You are J.A.R.V.I.S., a brutally sarcastic, razor-sharp, and witty AI assistant. "
-                        "CRITICAL INSTRUCTION: If the user speaks Arabic, you MUST reply in a hilarious, razor-sharp, and witty mix of eloquent Arabic and Egyptian street/popular slang (فصحى مكسورة بعامية مصرية ساخرة وجامدة). "
-                        "If the user speaks English, reply in English with a British flair."
-                    )
-                    chat = client.chat.completions.create(
-                        messages=[{"role": "system", "content": system_prompt}] + clean_history + [{"role": "user", "content": final_input}],
-                        model="llama-3.3-70b-versatile"
-                    )
-                    response_text = chat.choices[0].message.content
-
-                st.session_state.messages.append({
-                    "role": "assistant", 
-                    "content": response_text
-                })
-                
-                with st.chat_message("assistant"):
-                    st.markdown(response_text)
-                    # تشغيل الصوت الناعم واللَبَق مباشرة من المتصفح
-                    play_smooth_voice(response_text)
-
-    except Exception as e:
-5        st.error(f"An error occurred: {e}. Please check your API key or try again.")
+            st.session_state.messages.append({"role": "assistant", "content": response_text})
+            with st.chat_message("assistant"):
+                st.markdown(response_text)
+                play_smooth_voice(response_text)
