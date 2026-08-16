@@ -12,10 +12,16 @@ from PIL import Image
 import io
 from audio_recorder_streamlit import audio_recorder
 from gtts import gTTS
-import chromadb
-from chromadb.utils import embedding_functions
 
-# --- Tool Registry & Direct Actions ---
+# Try importing ChromaDB safely for cloud environments
+try:
+    import chromadb
+    from chromadb.utils import embedding_functions
+    CHROMA_AVAILABLE = True
+except Exception:
+    CHROMA_AVAILABLE = False
+
+# --- Tool Registry & Advanced Actions ---
 def calculate_math(expr):
     try:
         return str(eval(expr))
@@ -34,7 +40,7 @@ def open_youtube_action():
         """,
         height=0,
     )
-    return "YouTube has been opened automatically, Boss!"
+    return "YouTube opened successfully, Boss!"
 
 TOOL_LIBRARY = {
     "calculator": calculate_math,
@@ -45,7 +51,7 @@ TOOL_LIBRARY = {
 }
 
 # --- Page Setup & Futuristic Styling ---
-st.set_page_config(page_title="J.A.R.V.I.S. Ultimate Prime 100", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="J.A.R.V.I.S. Ultimate Plus", page_icon="🤖", layout="wide")
 st.markdown("""
     <style>
     .stApp { background-color: #050505; color: #00f2ff; }
@@ -56,7 +62,7 @@ st.markdown("""
 
 # --- Initialize Databases & Memory ---
 def init_db():
-    conn = sqlite3.connect('jarvis_ultimate_100.db')
+    conn = sqlite3.connect('jarvis_ultimate_plus.db')
     conn.execute('CREATE TABLE IF NOT EXISTS messages (email TEXT, role TEXT, content TEXT)')
     conn.execute('CREATE TABLE IF NOT EXISTS tasks (email TEXT, task TEXT, completed INTEGER)')
     conn.commit()
@@ -64,12 +70,15 @@ def init_db():
 
 init_db()
 
-try:
-    client_chroma = chromadb.PersistentClient(path="./chroma_db_100")
-    emb_fn = embedding_functions.DefaultEmbeddingFunction()
-    collection = client_chroma.get_or_create_collection(name="jarvis_memory", embedding_function=emb_fn)
-except Exception:
-    collection = None
+# ChromaDB Setup with fallback
+collection = None
+if CHROMA_AVAILABLE:
+    try:
+        client_chroma = chromadb.PersistentClient(path="./chroma_db_plus")
+        emb_fn = embedding_functions.DefaultEmbeddingFunction()
+        collection = client_chroma.get_or_create_collection(name="jarvis_plus_memory", embedding_function=emb_fn)
+    except Exception:
+        collection = None
 
 def add_to_memory(user_input, assistant_response):
     if collection:
@@ -94,7 +103,7 @@ def recall_memory(query):
 
 # --- Authentication Screen ---
 if "user_email" not in st.session_state:
-    st.title("🔐 J.A.R.V.I.S. Secure Access")
+    st.title("🔐 J.A.R.V.I.S. Ultimate Plus Access")
     email = st.text_input("Email:")
     groq_key = st.text_input("Groq API Key:", type="password")
     serper_key = st.text_input("Serper API Key (Optional for Web Search):", type="password")
@@ -108,14 +117,23 @@ if "user_email" not in st.session_state:
             st.error("Email and Groq API Key are required, Boss!")
     st.stop()
 
-# --- Sidebar Controls ---
-st.sidebar.title("⚙️ System Control")
+# --- Sidebar Controls (ChatGPT Plus + Jarvis Features) ---
+st.sidebar.title("⚙️ Plus Control Center")
 if st.sidebar.button("Logout"):
     for k in list(st.session_state.keys()):
         del st.session_state[k]
     st.rerun()
 
-# Tool Registry Selector in Sidebar
+# Plus Personas & Settings
+st.sidebar.subheader("🎨 Assistant Persona")
+persona = st.sidebar.selectbox("Select Persona:", ["Friendly & Helpful (Egyptian Style)", "Tony Stark Style (Sarcastic & Genius)", "Professional & Precise"])
+
+st.sidebar.subheader("🎛️ AI Parameters")
+model = st.sidebar.selectbox("Model:", ["llama-3.3-70b-versatile", "llama-3.2-90b-vision-preview"])
+temperature = st.sidebar.slider("Creativity (Temperature):", 0.0, 1.0, 0.5, 0.1)
+max_tokens = st.sidebar.slider("Max Tokens:", 256, 2048, 1024, 128)
+
+# Quick Tool Execution
 st.sidebar.subheader("🛠️ Quick Tool Execution")
 selected_tool = st.sidebar.selectbox("Select Tool:", list(TOOL_LIBRARY.keys()))
 tool_input = st.sidebar.text_input("Tool Input / Argument:")
@@ -134,13 +152,13 @@ st.sidebar.subheader("📋 Task Manager")
 new_task = st.sidebar.text_input("New Task:")
 if st.sidebar.button("Add Task"):
     if new_task:
-        conn = sqlite3.connect('jarvis_ultimate_100.db')
+        conn = sqlite3.connect('jarvis_ultimate_plus.db')
         conn.execute("INSERT INTO tasks VALUES (?, ?, 0)", (st.session_state.user_email, new_task))
         conn.commit()
         conn.close()
         st.rerun()
 
-conn = sqlite3.connect('jarvis_ultimate_100.db')
+conn = sqlite3.connect('jarvis_ultimate_plus.db')
 tasks = conn.execute("SELECT rowid, task FROM tasks WHERE email=? AND completed=0", (st.session_state.user_email,)).fetchall()
 for tid, task in tasks:
     if st.sidebar.checkbox(task, key=f"t_{tid}"):
@@ -149,9 +167,23 @@ for tid, task in tasks:
         st.rerun()
 conn.close()
 
-# Settings & TTS
+# Voice & Data Management
+st.sidebar.subheader("💾 Data & Voice")
 talk_to_me = st.sidebar.checkbox("Enable Voice Response (TTS)")
-model = st.sidebar.selectbox("AI Model:", ["llama-3.3-70b-versatile", "llama-3.2-90b-vision-preview"])
+
+conn = sqlite3.connect('jarvis_ultimate_plus.db')
+msgs = conn.execute("SELECT role, content FROM messages WHERE email=?", (st.session_state.user_email,)).fetchall()
+conn.close()
+
+chat_export_text = "\n".join([f"{r}: {c}" for r, c in msgs])
+st.sidebar.download_button("📥 Export Chat History", chat_export_text, file_name="jarvis_plus_export.txt")
+
+if st.sidebar.button("🗑️ Clear Chat History"):
+    conn = sqlite3.connect('jarvis_ultimate_plus.db')
+    conn.execute("DELETE FROM messages WHERE email=?", (st.session_state.user_email,))
+    conn.commit()
+    conn.close()
+    st.rerun()
 
 # --- Web Search Helper ---
 def search_web(query):
@@ -164,12 +196,7 @@ def search_web(query):
     except: return ""
 
 # --- Main Interface ---
-st.title("🤖 J.A.R.V.I.S. Ultimate Prime 100")
-
-# Load existing messages
-conn = sqlite3.connect('jarvis_ultimate_100.db')
-msgs = conn.execute("SELECT role, content FROM messages WHERE email=?", (st.session_state.user_email,)).fetchall()
-conn.close()
+st.title("🤖 J.A.R.V.I.S. Ultimate Plus Edition")
 
 for r, c in msgs:
     with st.chat_message(r):
@@ -186,29 +213,26 @@ prompt = st.chat_input("At your service, Boss...")
 if prompt or audio_bytes:
     msg = prompt if prompt else "User sent voice command"
     
-    # Save user message
-    conn = sqlite3.connect('jarvis_ultimate_100.db')
+    conn = sqlite3.connect('jarvis_ultimate_plus.db')
     conn.execute("INSERT INTO messages VALUES (?, ?, ?)", (st.session_state.user_email, "user", msg))
     conn.commit()
     conn.close()
     
     client = Groq(api_key=st.session_state.groq_api_key)
     
-    # Gather Context
     search_results = search_web(msg)
     memory_context = recall_memory(msg)
     
-    # System Prompt with Tool Instructions
     system_prompt = f"""
     You are J.A.R.V.I.S., the ultimate personal assistant created by Seif Haytham. 
-    You talk naturally and friendly in Egyptian Arabic when requested or standard professional style.
+    Persona style: {persona}.
     Available Tools: {list(TOOL_LIBRARY.keys())}.
     If the user asks to open YouTube (e.g. 'افتح يوتيوب' or 'open youtube'), you must output the exact keyword [OPEN_YOUTUBE] in your response.
     Retrieved Long-Term Memory: {memory_context}.
     Web Search Context: {search_results}.
     """
     
-    with st.spinner("J.A.R.V.I.S. is processing..."):
+    with st.spinner("J.A.R.V.I.S. Plus is processing..."):
         try:
             content_payload = [{"type": "text", "text": msg}]
             if uploaded_file:
@@ -217,26 +241,25 @@ if prompt or audio_bytes:
             
             response = client.chat.completions.create(
                 messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": content_payload}],
-                model=model
+                model=model,
+                temperature=temperature,
+                max_tokens=max_tokens
             )
             res_text = response.choices[0].message.content
             res_text = re.sub(r'[^\w\s\u0600-\u06FF.,!?:/\(\)\[\]#*_\\-]', '', res_text)
             
-            # Check if YouTube should be opened automatically
-            if "[OPEN_YOUTUBE]" in res_text or "يوتيوب" in msg.lower() and "افت" in msg.lower():
+            if "[OPEN_YOUTUBE]" in res_text or ("يوتيوب" in msg.lower() and "افت" in msg.lower()):
                 open_youtube_action()
                 res_text = res_text.replace("[OPEN_YOUTUBE]", "").strip()
                 if not res_text:
                     res_text = "تم فتح يوتيوب فوراً يا سيف، جاهز لأي أمر تاني!"
             
-            # Save Assistant Response
             add_to_memory(msg, res_text)
-            conn = sqlite3.connect('jarvis_ultimate_100.db')
+            conn = sqlite3.connect('jarvis_ultimate_plus.db')
             conn.execute("INSERT INTO messages VALUES (?, ?, ?)", (st.session_state.user_email, "assistant", res_text))
             conn.commit()
             conn.close()
             
-            # TTS Output
             if talk_to_me:
                 tts = gTTS(text=res_text, lang='ar')
                 tts.save("response.mp3")
