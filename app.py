@@ -27,7 +27,6 @@ audio_info = mic_recorder(start_prompt="🎤 اضغط للتحدث", stop_prompt
 def text_to_speech_dynamic(text):
     try:
         clean_text = re.sub(r'http\S+', '', text)
-        # Check if response contains Arabic text
         if re.search(r'[\u0600-\u06FF]', clean_text):
             tts = gTTS(text=clean_text, lang='ar')
         else:
@@ -47,11 +46,9 @@ else:
     try:
         client = Groq(api_key=api_key)
         
-        # Isolated session state per browser/device tab
         if "messages" not in st.session_state: 
             st.session_state.messages = []
 
-        # Render chat history
         for m in st.session_state.messages:
             with st.chat_message(m["role"]):
                 st.markdown(m["content"])
@@ -65,7 +62,6 @@ else:
 
         user_input = None
 
-        # Handle text input or voice input
         if prompt:
             user_input = prompt
         elif audio_info:
@@ -101,10 +97,10 @@ else:
                 
                 low_input = final_input.lower()
                 if any(keyword in low_input for keyword in ["genrate", "generate", "صورة", "photo", "image", "draw"]):
-                    response_text = "يا سيدي أنا مساعد ذكي وعبقري مش معرض فني عشان أرسم لك طلبات غريبة. ركز معايا في المفيد!"
+                    response_text = "يا سيدي العزيز، أين تظن أنك قاعد؟ هذا معمل ذكاء اصطناعي مش استوديو رسامين عشان أرسم لك! اطلب عدل عشان متزعلش."
                 elif media_data_url:
                     content_payload = [
-                        {"type": "text", "text": f"You are J.A.R.V.I.S., sarcastic and witty. Reply in the exact same language the user speaks (if Arabic, reply in natural Arabic. If English, reply in English). {final_input}"},
+                        {"type": "text", "text": f"You are J.A.R.V.I.S., sarcastic and witty. If the user speaks Arabic, reply in a hilarious, sharp mix of eloquent Arabic and Egyptian street slang (فصحى على شعبي ساخر). {final_input}"},
                         {"type": "image_url", "image_url": {"url": media_data_url}}
                     ]
                     chat = client.chat.completions.create(
@@ -115,7 +111,7 @@ else:
                 else:
                     system_prompt = (
                         "You are J.A.R.V.I.S., a brutally sarcastic, razor-sharp, and witty AI assistant. "
-                        "CRITICAL INSTRUCTION: Detect the language of the user's message. If the user speaks Arabic, you MUST reply fluently, naturally, and intelligently in Arabic while maintaining your sharp, sarcastic, and witty personality. "
+                        "CRITICAL INSTRUCTION: If the user speaks Arabic, you MUST reply in a hilarious, razor-sharp, and witty mix of eloquent Arabic and Egyptian street/popular slang (فصحى مكسورة بعامية مصرية ساخرة وجامدة). "
                         "If the user speaks English, reply in English with a British flair."
                     )
                     chat = client.chat.completions.create(
