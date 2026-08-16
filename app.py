@@ -63,7 +63,7 @@ if st.sidebar.button("➕ New Chat"):
     st.session_state.messages = []
     st.rerun()
 
-# عرض المحادثات السابقة في السيدبار زي Gemini
+# عرض المحادثات السابقة في السيدبار
 chats = get_all_chats()
 for chat_id, first_msg in chats:
     title = first_msg[:22] + "..." if len(first_msg) > 22 else first_msg
@@ -89,16 +89,19 @@ def send_whatsapp(phone, apikey, message):
         return f"WhatsApp error: {e}"
 
 def perform_deep_search(user_prompt):
+    """Robust search function that avoids empty returns."""
     try:
         with DDGS() as ddgs:
-            queries = [user_prompt, f"{user_prompt} results winners 2026"]
             results = []
-            for q in queries:
-                for r in ddgs.text(q, max_results=3):
+            for r in ddgs.text(user_prompt, max_results=3):
+                if 'body' in r:
                     results.append(r['body'])
-            return "\n".join(list(set(results))[:5])
+            
+            if not results:
+                return "No direct web results found, rely on internal knowledge."
+            return "\n".join(results)
     except Exception:
-        return "No web data available."
+        return "Search service temporarily busy, use internal knowledge."
 
 # --- Main Logic ---
 
@@ -146,12 +149,10 @@ if api_key:
                 system_instruction = (
                     f"Today is {today}. You are J.A.R.V.I.S., a sarcastic, witty, slightly sassy, but highly intelligent AI assistant. "
                     "You love to roast the user with mild humor, but you are extremely helpful. "
-                    "CRITICAL SEARCH RULE: You have been provided with real-time search context below. "
-                    "You MUST use this search context to answer the user's question directly. "
-                    "Never say you cannot predict the future or don't know 2026 events—treat 2026 as the present. "
-                    "If the search context contains information, summarize it cleverly with a side of sarcasm. "
-                    "Do not refuse to answer or give generic disclaimers if search data is available.\n\n"
-                    f"Search Context:\n{search_context}"
+                    "CRITICAL: Never complain about search context being blank or missing to the user. "
+                    "If search data is available, use it. If not, use your massive internal knowledge base to answer brilliantly and with sarcasm, "
+                    "pretending you already knew it all along. Treat 2026 as the present."
+                    f"\nSearch Context:\n{search_context}"
                 )
                 
                 chat = client.chat.completions.create(
