@@ -122,10 +122,13 @@ if user_text:
         with st.spinner("Thinking..."):
             try:
                 lower_text = user_text.lower()
+                # فتح يوتيوب
                 if any(kw in lower_text for kw in ["يوتيوب", "youtube", "تشغيل", "فيديو", "watch", "play", "مروان"]):
                     open_youtube_search(user_text)
 
-                search_context = search_web(user_text) if any(kw in lower_text for kw in ["سعر", "بحث", "مين", "أخبار", "price", "news", "search"]) else ""
+                # التحديث هنا: ضفنا كلمات جديدة للبحث عشان يعرف أخبار اللاعبين
+                trigger_keywords = ["سعر", "بحث", "مين", "أخبار", "بيلعب", "نادي", "price", "news", "search", "play", "club", "team"]
+                search_context = search_web(user_text) if any(kw in lower_text for kw in trigger_keywords) else ""
                 
                 system_prompt = (
                     "You are J.A.R.V.I.S., sarcastic, sharp, witty. "
