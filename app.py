@@ -121,27 +121,28 @@ tabs = st.tabs([
 with tabs[0]:
     st.subheader("💬 العقل العصبي والصوت المباشر")
     
-    voice_script = f"""
+    voice_script = """
     <div style="background:#111; padding:15px; border-radius:10px; border:1px solid #00ffcc; margin-bottom:15px;">
         <p style="color:#00ffcc; margin:0 0 10px 0;">🎙️ الأوامر الصوتية:</p>
         <button onclick="startListening()" style="background-color:#00ffcc; color:black; padding:8px 15px; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">تحدث إلى جارفيس</button>
         <p id="transcript" style="color:white; margin-top:8px;"></p>
     </div>
     <script>
-    function startListening() {{
+    function startListening() {
         const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
         recognition.lang = 'ar-EG';
-        recognition.onresult = function(event) {{
+        recognition.onresult = function(event) {
             const text = event.results[0][0].transcript;
             document.getElementById('transcript').innerText = "قلت: " + text;
-            const speech = new SpeechSynthesisUtterance("أهلاً بك يا {user_name}، سمعتك تقول: " + text);
+            const speech = new SpeechSynthesisUtterance("أهلاً بك يا USER_NAME، سمعتك تقول: " + text);
             speech.lang = 'ar-EG';
             window.speechSynthesis.speak(speech);
-        }};
+        };
         recognition.start();
     }
     </script>
-    """
+    """.replace("USER_NAME", user_name)
+    
     components.html(voice_script, height=130)
 
     conn = sqlite3.connect('jarvis_global_core.db')
