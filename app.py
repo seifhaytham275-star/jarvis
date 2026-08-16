@@ -19,7 +19,7 @@ st.markdown("""
 if "chats" not in st.session_state: st.session_state.chats = {"Chat 1": []}
 if "active_chat" not in st.session_state: st.session_state.active_chat = "Chat 1"
 if "settings" not in st.session_state:
-    st.session_state.settings = {"voice": True, "mix": True, "api_key": ""}
+    st.session_state.settings = {"voice": True, "mix": True, "api_key": "", "mic_enabled": True}
 
 # --- Functions ---
 def search_web(query):
@@ -69,6 +69,7 @@ with st.sidebar:
     with tab2:
         st.session_state.settings["api_key"] = st.text_input("Groq API Key", type="password")
         st.session_state.settings["voice"] = st.toggle("Enable Voice Response", True)
+        st.session_state.settings["mic_enabled"] = st.toggle("Enable Microphone (Lock/Unlock)", True)
         st.session_state.settings["mix"] = st.toggle("Mix Eloquent/Slang Arabic", True)
     
     with tab1:
@@ -90,8 +91,13 @@ active = st.session_state.active_chat
 for m in st.session_state.chats[active]:
     with st.chat_message(m["role"]): st.markdown(m["content"])
 
-# Input Section
-audio_info = mic_recorder(key='mic', start_prompt="🎤 Hold to Speak")
+# Input Section (مع ميزة قفل/فتح المايك)
+audio_info = None
+if st.session_state.settings.get("mic_enabled", True):
+    audio_info = mic_recorder(key='mic', start_prompt="🎤 Hold to Speak")
+else:
+    st.info("🔒 Microphone is currently locked from Settings.")
+
 prompt = st.chat_input("At your command, Sir...")
 
 user_text = prompt
@@ -122,11 +128,9 @@ if user_text:
         with st.spinner("Thinking..."):
             try:
                 lower_text = user_text.lower()
-                # فتح يوتيوب
                 if any(kw in lower_text for kw in ["يوتيوب", "youtube", "تشغيل", "فيديو", "watch", "play", "مروان"]):
                     open_youtube_search(user_text)
 
-                # التحديث هنا: ضفنا كلمات جديدة للبحث عشان يعرف أخبار اللاعبين
                 trigger_keywords = ["سعر", "بحث", "مين", "أخبار", "بيلعب", "نادي", "price", "news", "search", "play", "club", "team"]
                 search_context = search_web(user_text) if any(kw in lower_text for kw in trigger_keywords) else ""
                 
