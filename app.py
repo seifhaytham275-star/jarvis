@@ -1,4 +1,4 @@
-        import streamlit as st
+ import streamlit as st
 from groq import Groq
 import sqlite3
 import re
@@ -59,7 +59,6 @@ st.title("🤖 J.A.R.V.I.S. Prime")
 # --- Voice Input Feature ---
 audio = mic_recorder(start_prompt="Record Command", stop_prompt="Stop Recording", key='recorder')
 if audio:
-    # Note: Transcription requires Whisper API, for now it placeholders as input
     st.info("Voice captured! Please type your command to proceed or integrate Whisper for STT.")
 
 # --- Chat Interface ---
@@ -95,3 +94,4 @@ if prompt:
             st.rerun()
         except Exception as e:
             st.error(f"Error: {e}")
+       # --- Chat Interface ---
