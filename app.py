@@ -43,16 +43,14 @@ if "user_email" not in st.session_state:
             st.rerun()
     st.stop()
 
-# --- Sidebar & Language Selector ---
+# --- Sidebar & Clean Settings ---
 st.sidebar.title("⚙️ الإعدادات / Settings")
 
-# اختيار اللغة بشكل مباشر
+# اختيار اللغة
 language_mode = st.sidebar.selectbox("🌐 لغة الحوار / Language", ["العربية (المصرية)", "English"])
-
-api_key = st.sidebar.text_input("Groq API Key", type="password")
-serper_key = st.sidebar.text_input("Serper API Key", type="password")
 model = st.sidebar.selectbox("الموديل / Model", ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"])
 
+st.sidebar.markdown("---")
 if st.sidebar.button("مسح الذاكرة / Clear History"):
     conn = sqlite3.connect('jarvis_data.db')
     conn.execute("DELETE FROM messages WHERE email=?", (st.session_state.user_email,))
@@ -60,7 +58,23 @@ if st.sidebar.button("مسح الذاكرة / Clear History"):
     conn.close()
     st.rerun()
 
-# --- Dynamic Title based on Language ---
+# --- Load Secrets Safely ---
+api_key = ""
+serper_key = ""
+try:
+    if "GROQ_API_KEY" in st.secrets:
+        api_key = st.secrets["GROQ_API_KEY"]
+    elif "groq_api_key" in st.secrets:
+        api_key = st.secrets["groq_api_key"]
+        
+    if "SERPER_KEY" in st.secrets:
+        serper_key = st.secrets["SERPER_KEY"]
+    elif "serper_key" in st.secrets:
+        serper_key = st.secrets["serper_key"]
+except:
+    pass
+
+# --- Dynamic Title & Placeholder ---
 if language_mode == "العربية (المصرية)":
     st.title("🤖 جارفيس .. معاك يا سيف")
     chat_placeholder = "قولي يا بطل محتاج إيه..."
@@ -91,36 +105,40 @@ if prompt:
     with st.chat_message("user"): st.markdown(prompt)
     
     if not api_key:
-        st.error("نسيت الـ API Key! / Missing API Key!")
+        st.error("مشلاقيش الـ API Key! تأكد إنك ضفته في الـ Secrets عندك في سْتريمليت بالشكل ده: GROQ_API_KEY")
     else:
         with st.spinner("جارفيس بيفكر... / Thinking..."):
             search_data = search_web(prompt)
             client = Groq(api_key=api_key)
             
-            # توجيه جارفيس حسب اختيار اللغة في السايدبار
             if language_mode == "العربية (المصرية)":
                 system_prompt = (
-                    f"You are J.A.R.V.I.S., the ultimate personal assistant for Seif ({st.session_state.user_email}). "
+                    f"You are J.A.R.V.I.S., the ultimate personal assistant created by Seif Haytham. "
+                    "CRITICAL INSTRUCTION: If anyone asks who created you, who made you, or 'مين اللي عملك', you MUST answer starting with: 'بص بس كده، اللي عملني هو العبقري سيف هيثم'. "
                     "Talk to Seif using the Egyptian dialect (Ammiya) naturally. Be friendly, witty, smart, and Egyptian. "
+                    "NEVER give generic robotic fallback answers. Always engage intelligently. "
                     "ABSOLUTELY NO Chinese or gibberish characters. "
                     f"Search Context: {search_data}"
                 )
             else:
                 system_prompt = (
-                    f"You are J.A.R.V.I.S., the ultimate personal assistant for Seif ({st.session_state.user_email}). "
-                    "Talk in professional, fluent English. Be concise, brilliant, and sophisticated. "
+                    f"You are J.A.R.V.I.S., the ultimate personal assistant created by Seif Haytham. "
+                    "CRITICAL INSTRUCTION: If anyone asks who created you or made you, proudly state that Seif Haytham created you. "
+                    "Talk in friendly, smart, and fluent English like a true companion. "
+                    "NEVER give generic robotic fallback answers. Always be helpful and conversational. "
                     "ABSOLUTELY NO Chinese or gibberish characters. "
                     f"Search Context: {search_data}"
                 )
 
             chat_payload = [{"role": "system", "content": system_prompt}] + messages + [{"role": "user", "content": prompt}]
             
-            response = client.chat.completions.create(messages=chat_payload, model=model, temperature=0.3)
+            response = client.chat.completions.create(messages=chat_payload, model=model, temperature=0.5)
             res_text = response.choices[0].message.content
             
-            # فلتر يمنع ظهور أي حروف غريبة أو صينية
             res_text = re.sub(r'[^\w\s\u0600-\u06FF.,!?-]', '', res_text)
             
             save_message(st.session_state.user_email, "assistant", res_text)
             with st.chat_message("assistant"): st.markdown(res_text)
             st.rerun()
+
+    
