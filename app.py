@@ -90,15 +90,25 @@ def send_whatsapp(phone, apikey, message):
         return f"WhatsApp error: {e}"
 
 def perform_deep_search(user_prompt):
-    """Smart search that auto-formats stuck words and numbers."""
+    """Deep search upgraded to fetch multi-angle results for sports/events."""
     try:
-        cleaned = re.sub(r'([a-z])([A-Z])', r'\1 \2', user_prompt)
+        # تصحيح الأخطاء المطبعية في السنين تلقائياً
+        prompt_fixed = re.sub(r'20206', '2026', user_prompt)
+        prompt_fixed = re.sub(r'2026\d+', '2026', prompt_fixed)
+        
+        # فصل الكلمات الملاصقة
+        cleaned = re.sub(r'([a-z])([A-Z])', r'\1 \2', prompt_fixed)
         cleaned = re.sub(r'([a-zA-Z])(\d)', r'\1 \2', cleaned)
         cleaned = re.sub(r'(\d)([a-zA-Z])', r'\1 \2', cleaned)
         
         with DDGS() as ddgs:
             results = []
-            queries = [cleaned, f"{cleaned} results winners"]
+            # استعلامات بحث متعددة لضمان جلب تفاصيل دقيقة (أخبار، نتائج، وموقع رسمي)
+            queries = [
+                cleaned, 
+                f"{cleaned} match results winners wwe", 
+                f"{cleaned} card results"
+            ]
             for q in queries:
                 for r in ddgs.text(q, max_results=3):
                     if 'body' in r:
@@ -106,7 +116,7 @@ def perform_deep_search(user_prompt):
             
             if not results:
                 return f"No results found for '{cleaned}'."
-            return "\n".join(list(set(results))[:4])
+            return "\n".join(list(set(results))[:6])
     except Exception:
         return "Search service temporarily busy."
 
@@ -157,9 +167,9 @@ if api_key:
                     f"Today is {today}. You are J.A.R.V.I.S., a sarcastic, witty, but highly intelligent AI assistant. "
                     "You love to roast the user with mild humor, but you give accurate, factual answers. "
                     "CRITICAL RULE: Today is August 2026. Events like SummerSlam 2026 have ALREADY happened in the past. "
-                    "Never claim you are predicting the future or joking about time travel regarding 2026 events. "
-                    "Use the provided search context to give actual results and facts. "
-                    "If the search context has data, summarize it brilliantly with your witty persona."
+                    "Never claim you are predicting the future or don't know about 2026 events. "
+                    "Use the provided search context to extract and present actual match results, card details, and facts. "
+                    "If the search context has info, summarize it brilliantly with your witty persona."
                     f"\nSearch Context:\n{search_context}"
                 )
                 
