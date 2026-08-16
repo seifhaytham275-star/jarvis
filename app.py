@@ -4,108 +4,87 @@ from duckduckgo_search import DDGS
 import base64
 from streamlit_mic_recorder import mic_recorder
 
-# --- Page Setup & Styling ---
-st.set_page_config(page_title="J.A.R.V.I.S. AI", page_icon="🤖", layout="centered")
-
-# CSS "Iron Man" Look
+# --- Page Setup ---
+st.set_page_config(page_title="J.A.R.V.I.S. Prime", page_icon="🤖", layout="wide")
 st.markdown("""
     <style>
         .stApp { background-color: #0e1117; color: #00ffcc; }
-        .stChatInput { border: 2px solid #00ffcc !important; border-radius: 10px; }
-        h1 { color: #00ffcc; text-align: center; text-shadow: 0 0 10px #00ffcc; }
         .stChatMessage { border-left: 3px solid #00ffcc; background-color: #1a1d23; }
+        h1 { color: #00ffcc; text-shadow: 0 0 10px #00ffcc; }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🤖 J.A.R.V.I.S. Prime")
+# --- Session State ---
+if "chats" not in st.session_state: st.session_state.chats = {"Chat 1": []}
+if "active_chat" not in st.session_state: st.session_state.active_chat = "Chat 1"
+if "settings" not in st.session_state:
+    st.session_state.settings = {"voice": True, "mix": True, "api_key": ""}
 
-# --- Logic: Search ---
-def search_web(query):
-    try:
-        with DDGS() as ddgs:
-            results = list(ddgs.text(query, max_results=3))
-            return "\n".join([f"- {r['title']}: {r['body']}" for r in results])
-    except: return ""
-
-# --- Logic: Voice ---
+# --- Functions ---
 def play_smooth_voice(text):
-    clean_text = text.replace('"', "'").replace('\n', ' ')
-    js_code = f"""
-    <script>
-        if ('speechSynthesis' in window) {{
-            window.speechSynthesis.cancel();
-            let utterance = new SpeechSynthesisUtterance("{clean_text}");
-            utterance.rate = 1.1; 
-            utterance.pitch = 1.0;
-            let voices = window.speechSynthesis.getVoices();
-            let v = voices.find(v => v.lang.includes('ar') || v.lang.includes('en'));
-            if (v) utterance.voice = v;
-            window.speechSynthesis.speak(utterance);
-        }}
-    </script>
-    """
+    if not st.session_state.settings["voice"]: return
+    # Forces Arabic pronunciation
+    js_code = f"""<script>
+        window.speechSynthesis.cancel();
+        let u = new SpeechSynthesisUtterance("{text.replace('"', "'")}");
+        u.lang = 'ar-SA'; 
+        window.speechSynthesis.speak(u);
+    </script>"""
     st.components.v1.html(js_code, height=0)
 
-# --- Sidebar & Config ---
-st.sidebar.title("⚙️ Configuration")
-groq_api_key = st.sidebar.text_input("Groq API Key", type="password")
-
-if st.sidebar.button("🗑️ Reset Chat"):
-    st.session_state.messages = []
-    st.rerun()
-
-audio_info = mic_recorder(start_prompt="🎤 اضغط للتحدث", stop_prompt="⏹️ إيقاف", key='mic')
-
-# --- Main Logic ---
-if not groq_api_key:
-    st.warning("دخل الـ API Key بتاع Groq عشان جارفيس يقوم!")
-else:
-    client = Groq(api_key=groq_api_key)
-    if "messages" not in st.session_state: st.session_state.messages = []
-
-    for m in st.session_state.messages:
-        with st.chat_message(m["role"]):
-            st.markdown(m["content"])
-
-    # File Upload & Chat
-    uploaded_file = st.file_uploader("Upload Image...", type=["jpg", "png"])
-    prompt = st.chat_input("أمرك يا سيدي...")
-
-    user_input = prompt
-    if audio_info:
-        with st.spinner("بيسمع..."):
-            try:
-                user_input = client.audio.transcriptions.create(
-                    file=("audio.wav", audio_info['bytes']),
-                    model="whisper-large-v3",
-                    response_format="text"
-                )
-            except: pass
-
-    if user_input or uploaded_file:
-        media_data = None
-        if uploaded_file:
-            media_data = f"data:{uploaded_file.type};base64,{base64.b64encode(uploaded_file.read()).decode('utf-8')}"
+# --- Sidebar ---
+with st.sidebar:
+    st.title("⚙️ Control Panel")
+    tab1, tab2 = st.tabs(["💬 Chat History", "⚙️ Settings"])
+    
+    with tab2:
+        st.session_state.settings["api_key"] = st.text_input("Groq API Key", type="password")
+        st.session_state.settings["voice"] = st.toggle("Enable Voice Response", True)
+        st.session_state.settings["mix"] = st.toggle("Mix Eloquent/Slang Arabic", True)
+    
+    with tab1:
+        if st.button("➕ New Chat"):
+            new_id = f"Chat {len(st.session_state.chats) + 1}"
+            st.session_state.chats[new_id] = []
+            st.session_state.active_chat = new_id
         
-        st.session_state.messages.append({"role": "user", "content": user_input or "حلل الصورة دي"})
-        with st.chat_message("user"): st.markdown(user_input or "صورة")
+        # Display chat list
+        for chat_id in st.session_state.chats:
+            if st.button(chat_id): st.session_state.active_chat = chat_id
 
-        with st.spinner("جارفيس بيفكر..."):
-            search_context = search_web(user_input) if any(kw in (user_input or "").lower() for kw in ["سعر", "مين", "أخبار", "بحث"]) else ""
-            
-            system_prompt = (
-                "You are J.A.R.V.I.S., sarcastic, sharp, witty. "
-                "If Arabic: mix eloquent Arabic + Egyptian slang. If English: British accent. "
-                f"Web Context: {search_context}"
-            )
-            
-            # Request to Model
-            chat_payload = [{"role": "system", "content": system_prompt}] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
-            
-            response = client.chat.completions.create(messages=chat_payload, model="llama-3.3-70b-versatile")
-            response_text = response.choices[0].message.content
+# --- Main Interface ---
+st.title("🤖 J.A.R.V.I.S. Prime")
 
-            st.session_state.messages.append({"role": "assistant", "content": response_text})
-            with st.chat_message("assistant"):
-                st.markdown(response_text)
-                play_smooth_voice(response_text)
+# Render Active Chat
+active = st.session_state.active_chat
+for m in st.session_state.chats[active]:
+    with st.chat_message(m["role"]): st.markdown(m["content"])
+
+# Input Section
+audio_info = mic_recorder(key='mic', start_prompt="🎤 Hold to Speak")
+prompt = st.chat_input("At your command, Sir...")
+
+user_text = prompt
+if audio_info and not prompt:
+    with st.spinner("Listening..."):
+        try:
+            client = Groq(api_key=st.session_state.settings["api_key"])
+            user_text = client.audio.transcriptions.create(file=("audio.wav", audio_info['bytes']), model="whisper-large-v3", response_format="text")
+        except: pass
+
+if user_text:
+    st.session_state.chats[active].append({"role": "user", "content": user_text})
+    with st.chat_message("user"): st.markdown(user_text)
+    
+    with st.spinner("Thinking..."):
+        system_prompt = "You are JARVIS. Use mixed Arabic/Sha'abi if enabled." if st.session_state.settings["mix"] else "Standard."
+        client = Groq(api_key=st.session_state.settings["api_key"])
+        response = client.chat.completions.create(
+            messages=[{"role": "system", "content": system_prompt}] + st.session_state.chats[active],
+            model="llama-3.3-70b-versatile"
+        ).choices[0].message.content
+        
+        st.session_state.chats[active].append({"role": "assistant", "content": response})
+        with st.chat_message("assistant"):
+            st.markdown(response)
+            play_smooth_voice(response)
