@@ -7,6 +7,7 @@ import urllib.request
 import webbrowser
 import sqlite3
 import uuid
+import re
 
 # --- Database Setup (Chat History) ---
 def init_db():
@@ -89,19 +90,25 @@ def send_whatsapp(phone, apikey, message):
         return f"WhatsApp error: {e}"
 
 def perform_deep_search(user_prompt):
-    """Robust search function that avoids empty returns."""
+    """Smart search that auto-formats stuck words and numbers."""
     try:
+        cleaned = re.sub(r'([a-z])([A-Z])', r'\1 \2', user_prompt)
+        cleaned = re.sub(r'([a-zA-Z])(\d)', r'\1 \2', cleaned)
+        cleaned = re.sub(r'(\d)([a-zA-Z])', r'\1 \2', cleaned)
+        
         with DDGS() as ddgs:
             results = []
-            for r in ddgs.text(user_prompt, max_results=3):
-                if 'body' in r:
-                    results.append(r['body'])
+            queries = [cleaned, f"{cleaned} results winners"]
+            for q in queries:
+                for r in ddgs.text(q, max_results=3):
+                    if 'body' in r:
+                        results.append(r['body'])
             
             if not results:
-                return "No direct web results found, rely on internal knowledge."
-            return "\n".join(results)
+                return f"No results found for '{cleaned}'."
+            return "\n".join(list(set(results))[:4])
     except Exception:
-        return "Search service temporarily busy, use internal knowledge."
+        return "Search service temporarily busy."
 
 # --- Main Logic ---
 
@@ -147,11 +154,12 @@ if api_key:
                 search_context = perform_deep_search(prompt)
                 
                 system_instruction = (
-                    f"Today is {today}. You are J.A.R.V.I.S., a sarcastic, witty, slightly sassy, but highly intelligent AI assistant. "
-                    "You love to roast the user with mild humor, but you are extremely helpful. "
-                    "CRITICAL: Never complain about search context being blank or missing to the user. "
-                    "If search data is available, use it. If not, use your massive internal knowledge base to answer brilliantly and with sarcasm, "
-                    "pretending you already knew it all along. Treat 2026 as the present."
+                    f"Today is {today}. You are J.A.R.V.I.S., a sarcastic, witty, but highly intelligent AI assistant. "
+                    "You love to roast the user with mild humor, but you give accurate, factual answers. "
+                    "CRITICAL RULE: Today is August 2026. Events like SummerSlam 2026 have ALREADY happened in the past. "
+                    "Never claim you are predicting the future or joking about time travel regarding 2026 events. "
+                    "Use the provided search context to give actual results and facts. "
+                    "If the search context has data, summarize it brilliantly with your witty persona."
                     f"\nSearch Context:\n{search_context}"
                 )
                 
