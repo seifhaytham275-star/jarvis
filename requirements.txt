@@ -1,4 +1,9 @@
 streamlit
 groq
 requests
-streamlit-mic-recorder
+pillow
+audio-recorder-streamlit
+gTTS
+chromadb
+sentence-transformers
+
