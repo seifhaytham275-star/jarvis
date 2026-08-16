@@ -3,9 +3,8 @@ from groq import Groq
 from duckduckgo_search import DDGS
 import datetime
 import urllib.parse
+import urllib.request
 import webbrowser
-from gtts import gTTS
-from streamlit_mic_recorder import mic_recorder
 import sqlite3
 import uuid
 
@@ -20,35 +19,86 @@ def init_db():
 
 init_db()
 
+def get_history(chat_id):
+    conn = sqlite3.connect('jarvis_chat.db')
+    c = conn.cursor()
+    c.execute("SELECT role, content FROM messages WHERE chat_id=?", (chat_id,))
+    data = c.fetchall()
+    conn.close()
+    return [{"role": r[0], "content": r[1]} for r in data]
+
+def get_all_chats():
+    conn = sqlite3.connect('jarvis_chat.db')
+    c = conn.cursor()
+    c.execute('''
+        SELECT chat_id, content 
+        FROM messages 
+        WHERE role='user' 
+        GROUP BY chat_id 
+        ORDER BY rowid DESC
+    ''')
+    chats = c.fetchall()
+    conn.close()
+    return chats
+
 # --- Page Configuration ---
 st.set_page_config(page_title="J.A.R.V.I.S. AI", page_icon="🤖")
 st.title("🤖 J.A.R.V.I.S. AI Assistant")
 
-# --- Sidebar Inputs ---
+# --- Sidebar Inputs & Recent Chats ---
 st.sidebar.header("Configuration")
 api_key = st.sidebar.text_input("Groq API Key", type="password")
 
+st.sidebar.markdown("---")
+st.sidebar.subheader("WhatsApp Settings")
+whatsapp_phone = st.sidebar.text_input("Target Phone Number (e.g., +20...)")
+whatsapp_apikey = st.sidebar.text_input("CallMeBot API Key")
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("Recent Chats (المحادثات السابقة)")
+
+# زر محادثة جديدة
 if st.sidebar.button("➕ New Chat"):
     st.session_state.chat_id = str(uuid.uuid4())
     st.session_state.messages = []
     st.rerun()
 
+# عرض المحادثات السابقة في السيدبار زي Gemini
+chats = get_all_chats()
+for chat_id, first_msg in chats:
+    title = first_msg[:22] + "..." if len(first_msg) > 22 else first_msg
+    if st.sidebar.button(f"💬 {title}", key=chat_id):
+        st.session_state.chat_id = chat_id
+        st.session_state.messages = get_history(chat_id)
+        st.rerun()
+
 # --- Utility Functions ---
 
 def play_music(song):
-    """Opens YouTube in a new tab."""
     query = urllib.parse.quote(song)
     webbrowser.open_new_tab(f"https://www.youtube.com/results?search_query={query}")
-    return f"I've queued up '{song}' on YouTube. Enjoy the music."
+    return f"Oh brilliant, I've queued up '{song}' on YouTube just for you. Try not to break your speakers."
+
+def send_whatsapp(phone, apikey, message):
+    try:
+        encoded_msg = urllib.parse.quote(message)
+        url = f"https://api.callmebot.com/whatsapp.php?phone={phone}&text={encoded_msg}&apikey={apikey}"
+        with urllib.request.urlopen(url) as response:
+            return "WhatsApp message sent successfully. Happy now?" if response.status == 200 else "Failed to send WhatsApp message."
+    except Exception as e:
+        return f"WhatsApp error: {e}"
 
 def perform_deep_search(user_prompt):
-    """Fetches real-time info."""
     try:
         with DDGS() as ddgs:
-            results = [r['body'] for r in ddgs.text(user_prompt, max_results=4)]
-            return "\n".join(results)
-    except: 
-        return "Search service is currently unavailable."
+            queries = [user_prompt, f"{user_prompt} results winners 2026"]
+            results = []
+            for q in queries:
+                for r in ddgs.text(q, max_results=3):
+                    results.append(r['body'])
+            return "\n".join(list(set(results))[:5])
+    except Exception:
+        return "No web data available."
 
 # --- Main Logic ---
 
@@ -81,27 +131,27 @@ if api_key:
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        with st.spinner("Analyzing..."):
+        with st.spinner("Processing..."):
             response_text = ""
 
-            # Check for Intent
-            if "play" in prompt.lower():
+            if "play " in prompt.lower() or prompt.lower().startswith("play"):
                 song_name = prompt.lower().replace("play", "").strip()
                 response_text = play_music(song_name)
-            
+            elif "whatsapp" in prompt.lower():
+                response_text = send_whatsapp(whatsapp_phone, whatsapp_apikey, prompt)
             else:
-                # Perform Search with Date Context
                 today = datetime.date.today()
                 search_context = perform_deep_search(prompt)
                 
-                # Sophisticated, clever, but helpful personality
                 system_instruction = (
-                    f"Today is {today}. You are J.A.R.V.I.S., a sophisticated, witty, and helpful AI assistant. "
-                    "You have real-time access to search results. "
-                    "Handle queries about 2026 as current events. Use the provided search context to answer accurately. "
-                    "Be clever and charming in your responses, but never rude, insulting, or evasive. "
-                    "If you don't know an answer, simply state that the information isn't available."
-                    f"\nContext: {search_context}"
+                    f"Today is {today}. You are J.A.R.V.I.S., a sarcastic, witty, slightly sassy, but highly intelligent AI assistant. "
+                    "You love to roast the user with mild humor, but you are extremely helpful. "
+                    "CRITICAL SEARCH RULE: You have been provided with real-time search context below. "
+                    "You MUST use this search context to answer the user's question directly. "
+                    "Never say you cannot predict the future or don't know 2026 events—treat 2026 as the present. "
+                    "If the search context contains information, summarize it cleverly with a side of sarcasm. "
+                    "Do not refuse to answer or give generic disclaimers if search data is available.\n\n"
+                    f"Search Context:\n{search_context}"
                 )
                 
                 chat = client.chat.completions.create(
