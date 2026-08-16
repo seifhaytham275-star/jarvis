@@ -6,4 +6,3 @@ audio-recorder-streamlit
 gTTS
 chromadb
 sentence-transformers
-
