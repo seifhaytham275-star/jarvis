@@ -57,7 +57,7 @@ serper_key = st.session_state.get("serper_key", "")
 # --- Sidebar & Settings ---
 st.sidebar.title("⚙️ الإعدادات / Settings")
 
-language_mode = st.sidebar.selectbox("🌐 لغة الحوار / Language", ["العربية ( المصرية)", "English"])
+language_mode = st.sidebar.selectbox("🌐 لغة الحوار / Language", ["العربية (المصرية)", "English"])
 model = st.sidebar.selectbox("الموديل / Model", ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"])
 
 st.sidebar.markdown("---")
@@ -86,12 +86,10 @@ def search_web(query):
     if not serper_key: return ""
     try:
         url = "https://google.serper.dev/search"
-        # لو الطلب فيه يوتيوب، نزود موقع يوتيوب في البحث عشان نجيب لينكات مظبوطة
         payload = json.dumps({"q": query})
         headers = {'X-API-KEY': serper_key, 'Content-Type': 'application/json'}
         res = requests.post(url, headers=headers, data=payload).json()
         
-        # تجميع الروابط والنصوص المتاحة
         results = []
         for item in res.get("organic", [])[:4]:
             title = item.get("title", "")
@@ -115,7 +113,7 @@ if prompt:
     if not api_key:
         st.error("مفيش API Key! يرجى تسجيل الخروج وإعادة إدخال المفتاح.")
     else:
-        with st.spinner("جارفيس بيبحث وبيجهّز اللينك... / Searching..."):
+        with st.spinner("جارفيس بيفحث وبيجهّز اللينك... / Searching..."):
             search_data = search_web(prompt)
             client = Groq(api_key=api_key)
             
@@ -144,7 +142,8 @@ if prompt:
             response = client.chat.completions.create(messages=chat_payload, model=model, temperature=0.5)
             res_text = response.choices[0].message.content
             
-            res_text = re.sub(r'[^\w\s\u0600-\u06FF.,!?-://\[\]()#*_]', '', res_text)
+            # تم إصلاح الـ Regex بنجاح
+            res_text = re.sub(r'[^\w\s\u0600-\u06FF.,!?:/\(\)\[\]#*_\\-]', '', res_text)
             
             save_message(st.session_state.user_email, "assistant", res_text)
             with st.chat_message("assistant"): st.markdown(res_text)
