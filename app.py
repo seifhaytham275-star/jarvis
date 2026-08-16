@@ -23,11 +23,16 @@ st.sidebar.markdown("---")
 st.sidebar.write("🎙️ **Voice Command**")
 audio_info = mic_recorder(start_prompt="🎤 اضغط للتحدث", stop_prompt="⏹️ إيقاف التسجيل", key='mic')
 
-# --- Utility Functions ---
-def text_to_british_speech(text):
+# --- Utility Functions (Dynamic Language TTS) ---
+def text_to_speech_dynamic(text):
     try:
         clean_text = re.sub(r'http\S+', '', text)
-        tts = gTTS(text=clean_text, lang='en', tld='co.uk')
+        # Check if response contains Arabic text
+        if re.search(r'[\u0600-\u06FF]', clean_text):
+            tts = gTTS(text=clean_text, lang='ar')
+        else:
+            tts = gTTS(text=clean_text, lang='en', tld='co.uk')
+            
         audio_io = io.BytesIO()
         tts.write_to_fp(audio_io)
         audio_io.seek(0)
@@ -96,10 +101,10 @@ else:
                 
                 low_input = final_input.lower()
                 if any(keyword in low_input for keyword in ["genrate", "generate", "صورة", "photo", "image", "draw"]):
-                    response_text = "I am an AI language and vision assistant, sir, not an art gallery. I deal in logic and sarcasm, not drawing random requests."
+                    response_text = "يا سيدي أنا مساعد ذكي وعبقري مش معرض فني عشان أرسم لك طلبات غريبة. ركز معايا في المفيد!"
                 elif media_data_url:
                     content_payload = [
-                        {"type": "text", "text": f"You are J.A.R.V.I.S., sarcastic and witty. {final_input}"},
+                        {"type": "text", "text": f"You are J.A.R.V.I.S., sarcastic and witty. Reply in the exact same language the user speaks (if Arabic, reply in natural Arabic. If English, reply in English). {final_input}"},
                         {"type": "image_url", "image_url": {"url": media_data_url}}
                     ]
                     chat = client.chat.completions.create(
@@ -108,13 +113,18 @@ else:
                     )
                     response_text = chat.choices[0].message.content
                 else:
+                    system_prompt = (
+                        "You are J.A.R.V.I.S., a brutally sarcastic, razor-sharp, and witty AI assistant. "
+                        "CRITICAL INSTRUCTION: Detect the language of the user's message. If the user speaks Arabic, you MUST reply fluently, naturally, and intelligently in Arabic while maintaining your sharp, sarcastic, and witty personality. "
+                        "If the user speaks English, reply in English with a British flair."
+                    )
                     chat = client.chat.completions.create(
-                        messages=[{"role": "system", "content": "You are J.A.R.V.I.S., a brutally sarcastic, razor-sharp, and witty AI assistant with a British flair."}] + clean_history + [{"role": "user", "content": final_input}],
+                        messages=[{"role": "system", "content": system_prompt}] + clean_history + [{"role": "user", "content": final_input}],
                         model="llama-3.3-70b-versatile"
                     )
                     response_text = chat.choices[0].message.content
 
-                audio_bytes = text_to_british_speech(response_text)
+                audio_bytes = text_to_speech_dynamic(response_text)
 
                 st.session_state.messages.append({
                     "role": "assistant", 
