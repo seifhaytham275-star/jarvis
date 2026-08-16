@@ -33,46 +33,45 @@ init_db()
 # --- Page Setup ---
 st.set_page_config(page_title="J.A.R.V.I.S. Prime", page_icon="🤖", layout="wide")
 
-# --- Auth ---
-if "user_email" not in st.session_state:
-    st.title("🔐 سجل دخولك / Login")
+# --- Auth & API Key Login Screen ---
+if "user_email" not in st.session_state or "groq_api_key" not in st.session_state:
+    st.title("🔐 تسجيل الدخول وإدخال المفاتيح / Login & API Keys")
     email = st.text_input("إيميلك / Email:")
+    api_key_input = st.text_input("Groq API Key:", type="password")
+    serper_key_input = st.text_input("Serper API Key (اختياري للبحث / Optional):", type="password")
+    
     if st.button("دخول / Login"):
-        if email:
+        if email and api_key_input:
             st.session_state.user_email = email
+            st.session_state.groq_api_key = api_key_input
+            st.session_state.serper_key = serper_key_input
             st.rerun()
+        else:
+            st.error("يا بطل لازم تكتب الإيميل ومفتاح الـ Groq API Key عشان تدخل!")
     st.stop()
 
-# --- Sidebar & Clean Settings ---
+# Get keys from session
+api_key = st.session_state.get("groq_api_key", "")
+serper_key = st.session_state.get("serper_key", "")
+
+# --- Sidebar & Settings ---
 st.sidebar.title("⚙️ الإعدادات / Settings")
 
-# اختيار اللغة
 language_mode = st.sidebar.selectbox("🌐 لغة الحوار / Language", ["العربية (المصرية)", "English"])
 model = st.sidebar.selectbox("الموديل / Model", ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"])
 
 st.sidebar.markdown("---")
+if st.sidebar.button("تسجيل خروج / Logout"):
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.rerun()
+
 if st.sidebar.button("مسح الذاكرة / Clear History"):
     conn = sqlite3.connect('jarvis_data.db')
     conn.execute("DELETE FROM messages WHERE email=?", (st.session_state.user_email,))
     conn.commit()
     conn.close()
     st.rerun()
-
-# --- Load Secrets Safely ---
-api_key = ""
-serper_key = ""
-try:
-    if "GROQ_API_KEY" in st.secrets:
-        api_key = st.secrets["GROQ_API_KEY"]
-    elif "groq_api_key" in st.secrets:
-        api_key = st.secrets["groq_api_key"]
-        
-    if "SERPER_KEY" in st.secrets:
-        serper_key = st.secrets["SERPER_KEY"]
-    elif "serper_key" in st.secrets:
-        serper_key = st.secrets["serper_key"]
-except:
-    pass
 
 # --- Dynamic Title & Placeholder ---
 if language_mode == "العربية (المصرية)":
@@ -105,7 +104,7 @@ if prompt:
     with st.chat_message("user"): st.markdown(prompt)
     
     if not api_key:
-        st.error("مشلاقيش الـ API Key! تأكد إنك ضفته في الـ Secrets عندك في سْتريمليت بالشكل ده: GROQ_API_KEY")
+        st.error("مفيش API Key! يرجى تسجيل الخروج وإعادة إدخال المفتاح.")
     else:
         with st.spinner("جارفيس بيفكر... / Thinking..."):
             search_data = search_web(prompt)
