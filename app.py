@@ -1,8 +1,5 @@
 import streamlit as st
 from groq import Groq
-import re
-from gtts import gTTS
-import io
 import base64
 from streamlit_mic_recorder import mic_recorder
 
@@ -23,21 +20,30 @@ st.sidebar.markdown("---")
 st.sidebar.write("🎙️ **Voice Command**")
 audio_info = mic_recorder(start_prompt="🎤 اضغط للتحدث", stop_prompt="⏹️ إيقاف التسجيل", key='mic')
 
-# --- Utility Functions (Dynamic Language TTS) ---
-def text_to_speech_dynamic(text):
-    try:
-        clean_text = re.sub(r'http\S+', '', text)
-        if re.search(r'[\u0600-\u06FF]', clean_text):
-            tts = gTTS(text=clean_text, lang='ar')
-        else:
-            tts = gTTS(text=clean_text, lang='en', tld='co.uk')
+# --- JavaScript Native TTS for Smooth & Articulate Voice ("لَبَق") ---
+def play_smooth_voice(text):
+    # تنظيف النص من الروابط والرموز ليكون الكلام منساب ولَبَق
+    clean_text = text.replace('"', "'").replace('\n', ' ')
+    js_code = f"""
+    <script>
+        if ('speechSynthesis' in window) {{
+            window.speechSynthesis.cancel(); // إيقاف أي كلام قديم
+            let utterance = new SpeechSynthesisUtterance("{clean_text}");
+            utterance.rate = 1.0; // سرعة طبيعية وواضحة
+            utterance.pitch = 1.0; // نبرة متوازنة
             
-        audio_io = io.BytesIO()
-        tts.write_to_fp(audio_io)
-        audio_io.seek(0)
-        return audio_io
-    except Exception:
-        return None
+            // محاولة اختيار أفضل صوت متاح في الجهاز (عربي أو إنجليزي)
+            let voices = window.speechSynthesis.getVoices();
+            let targetVoice = voices.find(v => v.lang.includes('ar') || v.lang.includes('en'));
+            if (targetVoice) {{
+                utterance.voice = targetVoice;
+            }}
+            
+            window.speechSynthesis.speak(utterance);
+        }}
+    </script>
+    """
+    st.components.v1.html(js_code, height=0)
 
 # --- Main Logic ---
 if not api_key:
@@ -54,8 +60,6 @@ else:
                 st.markdown(m["content"])
                 if m.get("media_url"):
                     st.image(m["media_url"])
-                if m.get("audio"):
-                    st.audio(m["audio"], format='audio/mp3')
 
         uploaded_file = st.file_uploader("Upload Image (Optional)...", type=["jpg", "png", "jpeg"])
         prompt = st.chat_input("Ask J.A.R.V.I.S...")
@@ -97,7 +101,7 @@ else:
                 
                 low_input = final_input.lower()
                 if any(keyword in low_input for keyword in ["genrate", "generate", "صورة", "photo", "image", "draw"]):
-                    response_text = "يا سيدي العزيز، أين تظن أنك قاعد؟ هذا معمل ذكاء اصطناعي مش استوديو رسامين عشان أرسم لك! اطلب عدل عشان متزعلش."
+                    response_text = "يا سيدي العزيز، أنا مساعد ذكي وعبقري مش معرض فني عشان أرسم لك! ركز معايا في المفيد."
                 elif media_data_url:
                     content_payload = [
                         {"type": "text", "text": f"You are J.A.R.V.I.S., sarcastic and witty. If the user speaks Arabic, reply in a hilarious, sharp mix of eloquent Arabic and Egyptian street slang (فصحى على شعبي ساخر). {final_input}"},
@@ -120,18 +124,15 @@ else:
                     )
                     response_text = chat.choices[0].message.content
 
-                audio_bytes = text_to_speech_dynamic(response_text)
-
                 st.session_state.messages.append({
                     "role": "assistant", 
-                    "content": response_text, 
-                    "audio": audio_bytes
+                    "content": response_text
                 })
                 
                 with st.chat_message("assistant"):
                     st.markdown(response_text)
-                    if audio_bytes:
-                        st.audio(audio_bytes, format='audio/mp3')
+                    # تشغيل الصوت الناعم واللَبَق مباشرة من المتصفح
+                    play_smooth_voice(response_text)
 
     except Exception as e:
-        st.error(f"An error occurred: {e}. Please check your API key or try again.")
+5        st.error(f"An error occurred: {e}. Please check your API key or try again.")
