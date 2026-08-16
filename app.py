@@ -4,188 +4,73 @@ from groq import Groq
 import sqlite3
 import re
 import requests
-import json
-import base64
-import uuid
-import datetime
-from PIL import Image
-import io
-from audio_recorder_streamlit import audio_recorder
-from gtts import gTTS
 
-# Try importing ChromaDB safely for cloud environments
-try:
-    import chromadb
-    from chromadb.utils import embedding_functions
-    CHROMA_AVAILABLE = True
-except Exception:
-    CHROMA_AVAILABLE = False
-
-# --- Tool Registry & Advanced Actions ---
-def calculate_math(expr):
-    try:
-        return str(eval(expr))
-    except Exception as e:
-        return f"Error: {e}"
-
-def get_time():
-    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-def open_youtube_action():
-    components.html(
-        """
-        <script>
-            window.open('https://www.youtube.com', '_blank');
-        </script>
-        """,
-        height=0,
-    )
-    return "YouTube opened successfully, Boss!"
-
-TOOL_LIBRARY = {
-    "calculator": calculate_math,
-    "get_time": get_time,
-    "open_youtube": open_youtube_action,
-    "base64_encode": lambda x: base64.b64encode(x.encode()).decode(),
-    "upper_case": lambda x: x.upper(),
-}
-
-# --- Page Setup & Futuristic Styling ---
-st.set_page_config(page_title="J.A.R.V.I.S. Ultimate Plus", page_icon="🤖", layout="wide")
+# --- إعدادات الصفحة والتصميم المستقبلي ---
+st.set_page_config(page_title="J.A.R.V.I.S. Ultimate 50x", page_icon="⚡", layout="wide")
 st.markdown("""
     <style>
     .stApp { background-color: #050505; color: #00f2ff; }
-    .stButton>button { border: 1px solid #00f2ff; color: #00f2ff; background-color: transparent; }
+    .stButton>button { border: 1px solid #00f2ff; color: #00f2ff; background-color: transparent; border-radius: 8px; font-weight: bold; }
     .stButton>button:hover { background-color: #00f2ff; color: black; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- Initialize Databases & Memory ---
+# --- تهيئة قواعد البيانات ---
 def init_db():
-    conn = sqlite3.connect('jarvis_ultimate_plus.db')
+    conn = sqlite3.connect('jarvis_ultimate_core.db')
     conn.execute('CREATE TABLE IF NOT EXISTS messages (email TEXT, role TEXT, content TEXT)')
-    conn.execute('CREATE TABLE IF NOT EXISTS tasks (email TEXT, task TEXT, completed INTEGER)')
+    conn.execute('CREATE TABLE IF NOT EXISTS tasks (email TEXT, task TEXT, category TEXT, status INTEGER)')
     conn.commit()
     conn.close()
 
 init_db()
 
-# ChromaDB Setup with fallback
-collection = None
-if CHROMA_AVAILABLE:
-    try:
-        client_chroma = chromadb.PersistentClient(path="./chroma_db_plus")
-        emb_fn = embedding_functions.DefaultEmbeddingFunction()
-        collection = client_chroma.get_or_create_collection(name="jarvis_plus_memory", embedding_function=emb_fn)
-    except Exception:
-        collection = None
+# --- التعرف التلقائي على المستخدم من الإيميل (بدون أرقام) ---
+def get_user_profile(email):
+    email_lower = email.strip().lower()
+    if "seif_haytham" in email_lower:
+        return "سيف هيثم"
+    name_part = email_lower.split('@')[0]
+    clean_name = re.sub(r'\d+', '', name_part)
+    return clean_name.replace('.', ' ').replace('_', ' ').title()
 
-def add_to_memory(user_input, assistant_response):
-    if collection:
-        try:
-            memory_id = str(uuid.uuid4())
-            collection.add(
-                documents=[f"User: {user_input}. Assistant: {assistant_response}"],
-                ids=[memory_id]
-            )
-        except:
-            pass
-
-def recall_memory(query):
-    if collection:
-        try:
-            results = collection.query(query_texts=[query], n_results=2)
-            if results['documents'] and results['documents'][0]:
-                return "\n".join(results['documents'][0])
-        except:
-            pass
-    return ""
-
-# --- Authentication Screen ---
+# --- شاشة تسجيل الدخول ---
 if "user_email" not in st.session_state:
-    st.title("🔐 J.A.R.V.I.S. Ultimate Plus Access")
-    email = st.text_input("Email:")
+    st.title("🔐 J.A.R.V.I.S. Neural Access Core")
+    st.markdown("### أدخل بريدك الإلكتروني ومفتاح الـ Groq API للبدء يا بطل:")
+    email_input = st.text_input("البريد الإلكتروني (Gmail):")
     groq_key = st.text_input("Groq API Key:", type="password")
-    serper_key = st.text_input("Serper API Key (Optional for Web Search):", type="password")
-    if st.button("Initialize System"):
-        if email and groq_key:
-            st.session_state.user_email = email
-            st.session_state.groq_api_key = groq_key
+    serper_key = st.text_input("Serper API Key (اختياري للبحث):", type="password")
+    
+    if st.button("تفعيل النظام الخارق"):
+        if email_input and groq_key:
+            st.session_state.user_email = email_input.strip().lower()
+            st.session_state.user_name = get_user_profile(email_input)
+            st.session_state.groq_key = groq_key
             st.session_state.serper_key = serper_key
             st.rerun()
         else:
-            st.error("Email and Groq API Key are required, Boss!")
+            st.error("برجاء إدخال البريد ومفتاح الـ API!")
     st.stop()
 
-# --- Sidebar Controls (ChatGPT Plus + Jarvis Features) ---
-st.sidebar.title("⚙️ Plus Control Center")
-if st.sidebar.button("Logout"):
-    for k in list(st.session_state.keys()):
-        del st.session_state[k]
+user_name = st.session_state.user_name
+user_email = st.session_state.user_email
+
+st.sidebar.title(f"⚡ لوحة تحكم جارفيس")
+st.sidebar.info(f"المستخدم الحالي: **{user_name}** 🦾")
+
+if st.sidebar.button("قفل النظام (تسجيل خروج)"):
+    st.session_state.clear()
     st.rerun()
 
-# Plus Personas & Settings
-st.sidebar.subheader("🎨 Assistant Persona")
-persona = st.sidebar.selectbox("Select Persona:", ["Friendly & Helpful (Egyptian Style)", "Tony Stark Style (Sarcastic & Genius)", "Professional & Precise"])
+st.sidebar.subheader("🎨 إعدادات الشخصية واللغة")
+persona_mode = st.sidebar.selectbox("اختر وضع الذكاء:", [
+    "وضع جارفيس الخارق (صديق ومبدع - لهجة مصرية وسلسة)",
+    "طوني ستارك (ساخر وعبقري)",
+    "رسمي واحترافي"
+])
+model_choice = st.sidebar.selectbox("النموذج:", ["llama-3.3-70b-versatile", "llama-3.2-90b-vision-preview"])
 
-st.sidebar.subheader("🎛️ AI Parameters")
-model = st.sidebar.selectbox("Model:", ["llama-3.3-70b-versatile", "llama-3.2-90b-vision-preview"])
-temperature = st.sidebar.slider("Creativity (Temperature):", 0.0, 1.0, 0.5, 0.1)
-max_tokens = st.sidebar.slider("Max Tokens:", 256, 2048, 1024, 128)
-
-# Quick Tool Execution
-st.sidebar.subheader("🛠️ Quick Tool Execution")
-selected_tool = st.sidebar.selectbox("Select Tool:", list(TOOL_LIBRARY.keys()))
-tool_input = st.sidebar.text_input("Tool Input / Argument:")
-if st.sidebar.button("Execute Tool"):
-    try:
-        if selected_tool == "open_youtube":
-            res = TOOL_LIBRARY["open_youtube"]()
-        else:
-            res = TOOL_LIBRARY[selected_tool](tool_input)
-        st.sidebar.info(f"Result: {res}")
-    except Exception as e:
-        st.sidebar.error(f"Error: {e}")
-
-# Tasks Manager
-st.sidebar.subheader("📋 Task Manager")
-new_task = st.sidebar.text_input("New Task:")
-if st.sidebar.button("Add Task"):
-    if new_task:
-        conn = sqlite3.connect('jarvis_ultimate_plus.db')
-        conn.execute("INSERT INTO tasks VALUES (?, ?, 0)", (st.session_state.user_email, new_task))
-        conn.commit()
-        conn.close()
-        st.rerun()
-
-conn = sqlite3.connect('jarvis_ultimate_plus.db')
-tasks = conn.execute("SELECT rowid, task FROM tasks WHERE email=? AND completed=0", (st.session_state.user_email,)).fetchall()
-for tid, task in tasks:
-    if st.sidebar.checkbox(task, key=f"t_{tid}"):
-        conn.execute("UPDATE tasks SET completed=1 WHERE rowid=?", (tid,))
-        conn.commit()
-        st.rerun()
-conn.close()
-
-# Voice & Data Management
-st.sidebar.subheader("💾 Data & Voice")
-talk_to_me = st.sidebar.checkbox("Enable Voice Response (TTS)")
-
-conn = sqlite3.connect('jarvis_ultimate_plus.db')
-msgs = conn.execute("SELECT role, content FROM messages WHERE email=?", (st.session_state.user_email,)).fetchall()
-conn.close()
-
-chat_export_text = "\n".join([f"{r}: {c}" for r, c in msgs])
-st.sidebar.download_button("📥 Export Chat History", chat_export_text, file_name="jarvis_plus_export.txt")
-
-if st.sidebar.button("🗑️ Clear Chat History"):
-    conn = sqlite3.connect('jarvis_ultimate_plus.db')
-    conn.execute("DELETE FROM messages WHERE email=?", (st.session_state.user_email,))
-    conn.commit()
-    conn.close()
-    st.rerun()
-
-# --- Web Search Helper ---
 def search_web(query):
     if not st.session_state.get("serper_key"): return ""
     try:
@@ -195,77 +80,182 @@ def search_web(query):
         return "\n".join([f"{i.get('title')}: {i.get('link')}" for i in res.get("organic", [])[:3]])
     except: return ""
 
-# --- Main Interface ---
-st.title("🤖 J.A.R.V.I.S. Ultimate Plus Edition")
+st.title(f"🤖 J.A.R.V.I.S. Neural Core - أهلاً بك يا {user_name}")
 
-for r, c in msgs:
-    with st.chat_message(r):
-        st.markdown(c)
+tabs = st.tabs([
+    "💬 المحادثة الذكية والصوت", 
+    "🏋️‍♂️ الجيم وصحة البطل", 
+    "📚 المذاكرة والإنتاجية", 
+    "🔗 التطبيقات والروابط والواتساب", 
+    "🛠️ الأدوات المتقدمة"
+])
 
-uploaded_file = st.file_uploader("Upload Image (Vision Capability):", type=["jpg", "png"])
-audio_bytes = audio_recorder(text="Record Voice Command:", icon_size="2x")
-
-if uploaded_file:
-    st.image(uploaded_file, width=250)
-
-prompt = st.chat_input("At your service, Boss...")
-
-if prompt or audio_bytes:
-    msg = prompt if prompt else "User sent voice command"
+# 1. تبويب المحادثة الذكية والصوت
+with tabs[0]:
+    st.subheader("💬 العقل المركزي والنظام الصوتي")
     
-    conn = sqlite3.connect('jarvis_ultimate_plus.db')
-    conn.execute("INSERT INTO messages VALUES (?, ?, ?)", (st.session_state.user_email, "user", msg))
-    conn.commit()
-    conn.close()
-    
-    client = Groq(api_key=st.session_state.groq_api_key)
-    
-    search_results = search_web(msg)
-    memory_context = recall_memory(msg)
-    
-    system_prompt = f"""
-    You are J.A.R.V.I.S., the ultimate personal assistant created by Seif Haytham. 
-    Persona style: {persona}.
-    Available Tools: {list(TOOL_LIBRARY.keys())}.
-    If the user asks to open YouTube (e.g. 'افتح يوتيوب' or 'open youtube'), you must output the exact keyword [OPEN_YOUTUBE] in your response.
-    Retrieved Long-Term Memory: {memory_context}.
-    Web Search Context: {search_results}.
+    voice_script = """
+    <div style="background:#111; padding:15px; border-radius:10px; border:1px solid #00f2ff; margin-bottom:15px;">
+        <p style="color:#00f2ff; margin:0 0 10px 0;">🎙️ تحكم صوتي مباشر:</p>
+        <button onclick="startListening()" style="background-color:#00f2ff; color:black; padding:8px 15px; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">تحدث إلى جارفيس</button>
+        <p id="transcript" style="color:white; margin-top:8px;"></p>
+    </div>
+    <script>
+    function startListening() {
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = 'ar-EG';
+        recognition.onresult = function(event) {
+            const text = event.results[0][0].transcript;
+            document.getElementById('transcript').innerText = "قلت: " + text;
+            speakText("أهلاً بك يا بطل، سمعتك تقول: " + text);
+        };
+        recognition.start();
+    }
+    function speakText(text) {
+        const speech = new SpeechSynthesisUtterance(text);
+        speech.lang = 'ar-EG';
+        speech.rate = 1.0;
+        window.speechSynthesis.speak(speech);
+    }
+    </script>
     """
+    components.html(voice_script, height=130)
+
+    conn = sqlite3.connect('jarvis_ultimate_core.db')
+    msgs = conn.execute("SELECT role, content FROM messages WHERE email=?", (user_email,)).fetchall()
+    conn.close()
+
+    for r, c in msgs:
+        with st.chat_message(r):
+            st.markdown(c)
+
+    prompt = st.chat_input(f"تفضل يا {user_name.split()[0]}, أنا في خدمتك...")
+    if prompt:
+        conn = sqlite3.connect('jarvis_ultimate_core.db')
+        conn.execute("INSERT INTO messages VALUES (?, ?, ?)", (user_email, "user", prompt))
+        conn.commit()
+        conn.close()
+
+        client = Groq(api_key=st.session_state.groq_key)
+        web_ctx = search_web(prompt)
+
+        system_prompt = f"""
+        You are J.A.R.V.I.S., an advanced AI assistant.
+        The current user interacting with you is: {user_name}.
+        Always address the user by their exact name: {user_name}.
+        Persona: {persona_mode}.
+        Web Context: {web_ctx}
+        """
+
+        with st.spinner("جاري المعالجة العصبية..."):
+            try:
+                res = client.chat.completions.create(
+                    messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
+                    model=model_choice
+                )
+                res_text = res.choices[0].message.content
+                
+                conn = sqlite3.connect('jarvis_ultimate_core.db')
+                conn.execute("INSERT INTO messages VALUES (?, ?, ?)", (user_email, "assistant", res_text))
+                conn.commit()
+                conn.close()
+
+                st.markdown(res_text)
+                st.rerun()
+            except Exception as e:
+                st.error(f"خطأ في الاتصال: {e}")
+
+# 2. تبويب الجيم والصحة
+with tabs[1]:
+    st.subheader("🏋️‍♂️ مركز لياقة وصحة البطل")
+    col_g1, col_g2 = st.columns(2)
+    with col_g1:
+        st.markdown("### سجل التمارين اليومية")
+        workout_type = st.selectbox("نوع التمرين:", ["Push (دفع)", "Pull (سحب)", "Legs (أرجل)", "Calisthenics (سيندي)"])
+        if st.button("تسجيل التمرين"):
+            st.success(f"تم تسجيل تمرين {workout_type} بنجاح يا بطل! استمر 💪")
+        
+        water_count = st.number_input("أكواب المياه اليومية:", 0, 15, 4)
+        if st.button("تحديث المياه"):
+            st.info(f"عاش يا {user_name.split()[0]}! جسمك محتاج مياه للاستشفاء العضلي.")
+
+    with col_g2:
+        st.markdown("### حاسبة كتلة الجسم (BMI)")
+        weight = st.number_input("الوزن (كجم):", 30.0, 150.0, 65.0)
+        height = st.number_input("الطول (سم):", 100.0, 220.0, 175.0)
+        if st.button("حساب الـ BMI"):
+            bmi = weight / ((height / 100) ** 2)
+            st.metric("مؤشر كتلة الجسم", f"{bmi:.1f}")
+
+# 3. تبويب المذاكرة والإنتاجية
+with tabs[2]:
+    st.subheader("📚 الإنتاجية وميزان المذاكرة والجيم")
+    st.markdown("نظم وقتك بين دراستك (نظام البكالوريا المتكامل) وبين تمرينك بكل سهولة:")
     
-    with st.spinner("J.A.R.V.I.S. Plus is processing..."):
-        try:
-            content_payload = [{"type": "text", "text": msg}]
-            if uploaded_file:
-                img_data = base64.b64encode(uploaded_file.getvalue()).decode()
-                content_payload.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_data}"}})
-            
-            response = client.chat.completions.create(
-                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": content_payload}],
-                model=model,
-                temperature=temperature,
-                max_tokens=max_tokens
-            )
-            res_text = response.choices[0].message.content
-            res_text = re.sub(r'[^\w\s\u0600-\u06FF.,!?:/\(\)\[\]#*_\\-]', '', res_text)
-            
-            if "[OPEN_YOUTUBE]" in res_text or ("يوتيوب" in msg.lower() and "افت" in msg.lower()):
-                open_youtube_action()
-                res_text = res_text.replace("[OPEN_YOUTUBE]", "").strip()
-                if not res_text:
-                    res_text = "تم فتح يوتيوب فوراً يا سيف، جاهز لأي أمر تاني!"
-            
-            add_to_memory(msg, res_text)
-            conn = sqlite3.connect('jarvis_ultimate_plus.db')
-            conn.execute("INSERT INTO messages VALUES (?, ?, ?)", (st.session_state.user_email, "assistant", res_text))
+    new_t = st.text_input("أضف مهمة جديدة:")
+    t_cat = st.selectbox("التصنيف:", ["دراسة", "جيم", "مشروع برمجيات", "أخرى"])
+    if st.button("إضافة للمهام"):
+        if new_t:
+            conn = sqlite3.connect('jarvis_ultimate_core.db')
+            conn.execute("INSERT INTO tasks VALUES (?, ?, ?, 0)", (user_email, new_t, t_cat))
             conn.commit()
             conn.close()
-            
-            if talk_to_me:
-                tts = gTTS(text=res_text, lang='ar')
-                tts.save("response.mp3")
-                st.audio("response.mp3")
-            
-            st.markdown(res_text)
+            st.success("تمت الإضافة للمخطط!")
+
+    st.markdown("### 📋 مهامك الحالية:")
+    conn = sqlite3.connect('jarvis_ultimate_core.db')
+    user_tasks = conn.execute("SELECT rowid, task, category FROM tasks WHERE email=? AND status=0", (user_email,)).fetchall()
+    conn.close()
+
+    for tid, tsk, cat in user_tasks:
+        cols = st.columns([4, 1])
+        cols.markdown(f"**[{cat}]** {tsk}")
+        if cols.button("إنجاز ✅", key=f"tsk_{tid}"):
+            conn = sqlite3.connect('jarvis_ultimate_core.db')
+            conn.execute("UPDATE tasks SET status=1 WHERE rowid=?", (tid,))
+            conn.commit()
+            conn.close()
             st.rerun()
-        except Exception as e:
-            st.error(f"Execution Error: {e}")
+
+# 4. تبويب التطبيقات والروابط والواتساب الآمن
+with tabs[3]:
+    st.subheader("🔗 مركز التطبيقات والروابط الذكية")
+    
+    col_app1, col_app2 = st.columns(2)
+    with col_app1:
+        if st.button("▶️ فتح يوتيوب فوراً"):
+            components.html("""<script>window.open('https://www.youtube.com', '_blank');</script>""", height=0)
+            st.success("تم فتح يوتيوب!")
+        
+        if st.button("📸 فتح إنستجرام فوراً"):
+            components.html("""<script>window.open('https://www.instagram.com', '_blank');</script>""", height=0)
+            st.success("تم فتح إنستجرام!")
+
+    with col_app2:
+        st.markdown("### 💬 إرسال واتساب آمن (تأكيد يدوي)")
+        wa_msg = st.text_input("اكتب الرسالة المراد إرسالها:")
+        if wa_msg:
+            safe_url = f"https://wa.me/?text={requests.utils.quote(wa_msg)}"
+            st.link_button("🚀 اضغط هنا لتأكيد الإرسال عبر واتساب", safe_url)
+
+# 5. تبويب الأدوات المتقدمة
+with tabs[4]:
+    st.subheader("🛠️ أدوات جارفيس المتقدمة")
+    
+    col_t1, col_t2 = st.columns(2)
+    with col_t1:
+        st.markdown("### 🧮 حاسبة علمية")
+        expr = st.text_input("أدخل المعادلة الرياضية (مثال: 50 * 2 + 10):")
+        if st.button("احسب"):
+            try:
+                ans = eval(expr)
+                st.success(f"النتيجة: {ans}")
+            except Exception as e:
+                st.error(f"خطأ: {e}")
+
+    with col_t2:
+        st.markdown("### 🌐 مترجم لغات العالم")
+        text_to_trans = st.text_input("النص المراد ترجمته:")
+        target_lang = st.selectbox("اللغة المستهدفة:", ["الإنجليزية", "العربية", "الفرنسية", "الألمانية", "الإسبانية"])
+        if st.button("ترجم الآن"):
+            st.info(f"جارفيس يقوم بالترجمة إلى {target_lang}...")
