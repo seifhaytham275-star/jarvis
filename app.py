@@ -1,4 +1,4 @@
- import streamlit as st
+import streamlit as st
 from groq import Groq
 import sqlite3
 import re
@@ -94,4 +94,3 @@ if prompt:
             st.rerun()
         except Exception as e:
             st.error(f"Error: {e}")
-       # --- Chat Interface ---
