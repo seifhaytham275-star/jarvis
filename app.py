@@ -110,9 +110,7 @@ def perform_deep_search(user_prompt):
         return "No specific live web entries found."
 
 def text_to_british_speech(text):
-    """Generates British accent audio using gTTS."""
     try:
-        # إزالة الرموز البرمجية أو الروابط لو وجدت لكي يكون النطق نقياً
         clean_text = re.sub(r'http\S+', '', text)
         tts = gTTS(text=clean_text, lang='en', tld='co.uk')
         audio_io = io.BytesIO()
@@ -141,16 +139,13 @@ if api_key:
             if "audio" in m and m["audio"]:
                 st.audio(m["audio"], format='audio/mp3')
 
-    # File Uploader for Images
     uploaded_file = st.file_uploader("Upload an Image for J.A.R.V.I.S. to analyze...", type=["jpg", "jpeg", "png"])
     
-    # UI Inputs
     prompt = st.chat_input("Ask or command...")
     
     if prompt or uploaded_file:
         user_input = prompt if prompt else "Analyze this image and give me your sharp insights."
         
-        # Handle Image Upload & Vision Processing
         image_data_url = None
         if uploaded_file:
             image_bytes = uploaded_file.read()
@@ -160,7 +155,6 @@ if api_key:
 
         st.session_state.messages.append({"role": "user", "content": user_input, "image_url": image_data_url})
         
-        # Save User Message to DB
         conn = sqlite3.connect('jarvis_chat.db')
         conn.execute("INSERT INTO messages VALUES (?, ?, ?)", (st.session_state.chat_id, "user", user_input))
         conn.commit()
@@ -175,20 +169,24 @@ if api_key:
             response_text = ""
             generated_image_url = None
 
-            if "play " in user_input.lower() or user_input.lower().startswith("play"):
-                song_name = user_input.lower().replace("play", "").strip()
+            low_input = user_input.lower()
+            is_image_request = any(kw in low_input for kw in ["draw", "generate", "genrate", "photi", "photo", "image", "picture"])
+
+            if "play " in low_input or low_input.startswith("play"):
+                song_name = low_input.replace("play", "").strip()
                 response_text = play_music(song_name)
-            elif "whatsapp" in user_input.lower():
+            elif "whatsapp" in low_input:
                 response_text = send_whatsapp(whatsapp_phone, whatsapp_apikey, user_input)
-            elif "draw " in user_input.lower() or "generate image " in user_input.lower():
-                img_prompt = user_input.lower().replace("draw", "").replace("generate image", "").strip()
+            elif is_image_request:
+                img_prompt = low_input.replace("draw", "").replace("generate", "").replace("genrate", "").replace("photi", "").replace("photo", "").replace("image", "").replace("picture", "").strip()
+                if not img_prompt:
+                    img_prompt = user_input
                 encoded_img_prompt = urllib.parse.quote(img_prompt)
                 generated_image_url = f"https://image.pollinations.ai/prompt/{encoded_img_prompt}"
                 response_text = f"Right away, sir. I've rendered '{img_prompt}' into an image for you. Try not to stare too long."
             else:
                 today = datetime.date.today()
                 
-                # If an image was uploaded, use Groq's Vision Model
                 if image_data_url:
                     try:
                         vision_messages = [
@@ -217,16 +215,17 @@ if api_key:
                         f"\nSearch Context:\n{search_context}"
                     )
                     
+                    # تصفية الرسائل لضمان إرسال role و content فقط لمنع أخطاء Groq
+                    clean_messages = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
+                    
                     chat = client.chat.completions.create(
-                        messages=[{"role": "system", "content": system_instruction}] + st.session_state.messages,
+                        messages=[{"role": "system", "content": system_instruction}] + clean_messages,
                         model="llama-3.3-70b-versatile"
                     )
                     response_text = chat.choices[0].message.content
 
-            # Generate British Voice Audio
             audio_bytes = text_to_british_speech(response_text)
 
-            # Save Assistant Response to DB
             st.session_state.messages.append({
                 "role": "assistant", 
                 "content": response_text, 
