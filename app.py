@@ -90,7 +90,7 @@ def send_whatsapp(phone, apikey, message):
         return f"WhatsApp error: {e}"
 
 def perform_deep_search(user_prompt):
-    """Bulletproof search with robust fallback for wrestling and events."""
+    """Clean search without fake fallbacks to prevent model hallucinations."""
     try:
         prompt_fixed = re.sub(r'20206', '2026', user_prompt)
         prompt_fixed = re.sub(r'2026\d+', '2026', prompt_fixed)
@@ -108,11 +108,10 @@ def perform_deep_search(user_prompt):
                         results.append(r['body'])
         
         if not results:
-            # Fallback context guaranteed to trigger model knowledge
-            return "WWE SummerSlam 2026 was hosted as a historic multi-night event in August 2026 at U.S. Bank Stadium in Minneapolis, featuring massive matches across Night 1 and Night 2."
+            return "NO_SEARCH_RESULTS_FOUND"
         return "\n".join(list(set(results))[:5])
     except Exception:
-        return "WWE SummerSlam 2026 was hosted as a historic multi-night event in August 2026 at U.S. Bank Stadium in Minneapolis, featuring massive matches across Night 1 and Night 2."
+        return "NO_SEARCH_RESULTS_FOUND"
 
 # --- Main Logic ---
 
@@ -159,11 +158,10 @@ if api_key:
                 
                 system_instruction = (
                     f"Today is {today}. You are J.A.R.V.I.S., a sarcastic, witty, highly intelligent AI assistant. "
-                    "You love to roast the user with mild humor, but you provide extremely accurate and detailed factual answers. "
-                    "CRITICAL RULE: Today is August 2026. Events like SummerSlam 2026 (held in Minneapolis at U.S. Bank Stadium as a multi-night event) have ALREADY happened in the past. "
-                    "Never claim you don't know about 2026 events or that you are predicting the future. "
-                    "Use the provided search context and your internal training knowledge to give comprehensive match results, card breakdowns, and facts. "
-                    "Never complain about empty search context to the user."
+                    "You love to roast the user with mild humor, but you must be 100% truthful. "
+                    "CRITICAL ANTI-HALLUCINATION RULE: If the Search Context below says 'NO_SEARCH_RESULTS_FOUND' or lacks exact details about the event, "
+                    "DO NOT invent matches, wrestlers, or outcomes. Admit clearly and sarcastically that you don't have the live data for it right now, "
+                    "instead of making things up. If valid search context exists, summarize it accurately."
                     f"\nSearch Context:\n{search_context}"
                 )
                 
