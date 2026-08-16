@@ -1,4 +1,4 @@
-    import streamlit as st
+import streamlit as st
 from groq import Groq
 import sqlite3
 import re
@@ -41,9 +41,15 @@ if "user_email" not in st.session_state:
             st.rerun()
     st.stop()
 
-# --- Simplified Settings ---
+# --- Settings & WhatsApp Config ---
 st.sidebar.title("⚙️ Settings")
 api_key = st.sidebar.text_input("Groq API Key", type="password")
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("📱 WhatsApp (Twilio) Config")
+twilio_sid = st.sidebar.text_input("Twilio Account SID", type="password")
+twilio_token = st.sidebar.text_input("Twilio Auth Token", type="password")
+whatsapp_number = st.sidebar.text_input("Twilio WhatsApp Number", value="whatsapp:+14155238886")
 
 if st.sidebar.button("Clear History"):
     conn = sqlite3.connect('jarvis_data.db')
