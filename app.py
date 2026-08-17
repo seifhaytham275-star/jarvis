@@ -1,6 +1,7 @@
 import streamlit as st
 from PIL import Image
 import requests
+from bs4 import BeautifulSoup
 from gtts import gTTS
 from groq import Groq
 from googlesearch import search
@@ -10,7 +11,7 @@ from audio_recorder_streamlit import audio_recorder
 st.set_page_config(page_title="Jarvis AI", page_icon="🤖", layout="centered")
 
 st.title("🤖 Jarvis Ultimate Assistant")
-st.write("System Status: Online & Ready (Voice, Vision, Search, TTS)")
+st.write("System Status: Online & Ready (Live Web Scraping, Voice, Vision, TTS)")
 
 # إعداد مفتاح الـ API من القائمة الجانبية
 api_key = st.sidebar.text_input("Enter Groq API Key", type="password")
@@ -62,6 +63,22 @@ text_input = st.chat_input("Type something to Jarvis...")
 if text_input:
     prompt = text_input
 
+# دالة البحث الذكي اللحظي باستخدام BeautifulSoup و requests
+def smart_search(query):
+    try:
+        results = list(search(query, num_results=2))
+        if not results:
+            return "No search results found."
+        
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.get(results[0], headers=headers, timeout=5)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        text = soup.get_text(separator=' ', strip=True)[:2500]
+        
+        return f"Source URL: {results[0]}\nLive Web Content: {text}"
+    except Exception as e:
+        return f"Search Error: {e}"
+
 # ----------------- 4. التنفيذ والبحث والرد -----------------
 if prompt:
     if not api_key:
@@ -72,27 +89,24 @@ if prompt:
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # تجهيز البحث لو المستخدم طلب بحث
-        search_context = ""
-        if "بحث" in prompt or "search" in prompt.lower():
-            with st.status("Searching the web...", expanded=False):
-                try:
-                    urls = list(search(prompt, num_results=3))
-                    search_context = f"\n\n[Web Search Results to help you answer: {urls}]"
-                except Exception as e:
-                    search_context = f"\n\n[Search Error: {e}]"
+        # تجهيز البحث اللحظي لو مطلوب
+        live_context = ""
+        if "بحث" in prompt or "search" in prompt.lower() or "latest" in prompt.lower() or "اخبار" in prompt or "سعر" in prompt:
+            with st.status("Fetching live data from web...", expanded=False):
+                live_context = smart_search(prompt)
 
         # استدعاء Groq API
         try:
             client = Groq(api_key=api_key)
             
-            # تجهيز المحادثة مع توجيه النظام لدعم كل اللغات
             chat_history = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages[:-1]]
-            current_message = prompt + image_desc + search_context
+            current_message = prompt + image_desc
+            if live_context:
+                current_message += f"\n\n[Live Context from Web Search:\n{live_context}]"
             
             system_prompt = {
                 "role": "system", 
-                "content": "You are Jarvis, a highly advanced AI assistant. You are fluent in all languages of the world. Always reply cleanly and naturally in the user's language. Never mix random languages or use Chinese characters unless explicitly asked."
+                "content": "You are Jarvis, a highly advanced AI assistant. You are fluent in all languages of the world. Always reply cleanly and naturally in the user's language. Never mix random languages or use Chinese characters unless explicitly asked. Use live web context if provided."
             }
             
             messages_payload = [system_prompt] + chat_history + [{"role": "user", "content": current_message}]
@@ -111,7 +125,6 @@ if prompt:
                 
                 # ----------------- 5. وحدة تحويل النص لصوت (gTTS) -----------------
                 try:
-                    # نأخذ أول 300 حرف فقط عشان الصوت يتولد بسرعة
                     tts = gTTS(text=reply[:300], lang='en', slow=False)
                     tts.save("resp.mp3")
                     st.audio("resp.mp3", format="audio/mp3")
