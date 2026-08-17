@@ -1,15 +1,18 @@
 import datetime
+from bs4 import BeautifulSoup
 import requests
 import streamlit as st
 
 st.set_page_config(
-    page_title="Jarvis Ultimate Stark", page_icon="⚡", layout="centered"
+    page_title="Jarvis Ultimate Stark - God Mode",
+    page_icon="⚡",
+    layout="centered",
 )
 
-st.title("⚡ Jarvis Ultimate Stark (Wikidata Protocol)")
+st.title("⚡ Jarvis Ultimate Stark (God Mode)")
 st.write(
-    "System Status: Online | Knowledge Graph Active (100% Free, No API Key, No"
-    " Timeouts)"
+    "System Status: Online | Live Lite Search & Task Management Active"
+    " (100% Free, No Google)"
 )
 
 # تهيئة سجل المحادثة والمهام
@@ -24,7 +27,7 @@ for message in st.session_state.messages:
   with st.chat_message(message["role"]):
     st.markdown(message["content"])
 
-# استقبال مدخلات المستخدم بالعامية أو الإنجليزية
+# استقبال مدخلات المستخدم بالعامية المصرية أو الإنجليزية
 if query := st.chat_input("كلمني بالعامية المصرية أو الإنجليزية يا سيدي..."):
   st.chat_message("user").markdown(query)
   st.session_state.messages.append({"role": "user", "content": query})
@@ -46,6 +49,7 @@ if query := st.chat_input("كلمني بالعامية المصرية أو ال�
           "ايه",
           "الجو",
           "ليه",
+          "مين",
       ]
   )
 
@@ -59,7 +63,7 @@ if query := st.chat_input("كلمني بالعامية المصرية أو ال�
     if is_english:
       response = f"The time is {str_time}, Sir. Time flies when you're building the future."
     else:
-      response = f"الساعة دلوقتي يا سيدي {str_time}, الوقت بيعدي وإحنا بنبتكر."
+      response = f"الساعة دلوقتي يا سيدي {str_time}، الوقت بيعدي وإحنا بنبتكر."
 
   # 2. إدارة المهام وتنظيم الحياة
   elif (
@@ -99,52 +103,51 @@ if query := st.chat_input("كلمني بالعامية المصرية أو ال�
           else f"Here are your current tasks, Sir:\n{tasks_list}"
       )
 
-  # 3. البحث الذكي المستقر عبر Wikidata API
+  # 3. البحث المباشر السريع باستخدام DuckDuckGo Lite (بدون جوجل وبدون أخطاء)
   else:
     try:
-      url = "https://www.wikidata.org/w/api.php"
-      params = {
-          "action": "wbsearchentities",
-          "search": query,
-          "language": "en" if is_english else "ar",
-          "format": "json",
+      url = "https://lite.duckduckgo.com/lite/"
+      data = {"q": query}
+      headers = {
+          "User-Agent": (
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+          )
       }
-      headers = {"User-Agent": "JarvisStarkBot/1.0 (StarkTower)"}
-
-      res = requests.get(url, params=params, headers=headers, timeout=5)
+      res = requests.post(url, data=data, headers=headers, timeout=5)
 
       if res.status_code == 200:
-        data = res.json()
-        search_results = data.get("search", [])
-        if search_results:
-          snippets = "\n\n".join(
-              [
-                  f"• **{r.get('label', '')}**\n{r.get('description', 'لا توجد تفاصيل إضافية')}"
-                  for r in search_results[:3]
-              ]
-          )
+        soup = BeautifulSoup(res.text, "html.parser")
+        snippets = []
+        results = soup.find_all("td", class_="result-snippet")
+        for r in results[:3]:
+          text = r.get_text(strip=True)
+          if text:
+            snippets.append(f"• {text}")
+
+        if snippets:
+          joined_snippets = "\n\n".join(snippets)
           response = (
-              f"**[Stark Wikidata Intelligence]:**\n\n{snippets}\n\n*البيانات مستخرجة بدقة تامة يا سيدي وبدون أي تقطيع.*"
+              f"**[Stark Live Search Protocol]:**\n\n{joined_snippets}\n\n*النتائج قدامك يا سيدي من قلب الويب مباشرة وبدون لف ودوران.*"
               if not is_english
-              else f"**[Stark Wikidata Intelligence]:**\n\n{snippets}\n\n*Here are the precise details, Sir.*"
+              else f"**[Stark Live Search Protocol]:**\n\n{joined_snippets}\n\n*Here are the live web results, Sir.*"
           )
         else:
           response = (
-              f"دورت على '{query}' في قاعدة البيانات بس ملقيتش نتائج مطابقة يا سيدي."
+              f"دورت على '{query}' بس ملقيتش تفاصيل واضحة يا سيدي."
               if not is_english
-              else f"Searched for '{query}' in the database, but found no matching results, Sir."
+              else f"Searched for '{query}', but found no clear details, Sir."
           )
       else:
         response = (
-            "حصل خطأ بسيط في الاتصال بقاعدة البيانات يا سيدي، جرب سؤالاً آخر."
+            "السيرفر بياخد بريك قصير يا سيدي، جرب سؤالاً آخر."
             if not is_english
-            else "A slight connection error occurred, Sir. Try another query."
+            else "The server is taking a short break, Sir. Try another query."
         )
     except Exception as e:
       response = (
-          f"حدث خطأ تقني يا سيدي: {str(e)}"
+          f"حصل خطأ بسيط أثناء البحث يا سيدي: {str(e)}"
           if not is_english
-          else f"Technical error occurred, Sir: {str(e)}"
+          else f"An error occurred while searching, Sir: {str(e)}"
       )
 
   # عرض رد جارفيس
