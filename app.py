@@ -1,21 +1,17 @@
 import streamlit as st
 import requests
 
-# إعداد الصفحة
 st.set_page_config(page_title="Jarvis | Groq & Perplexity", page_icon="🤖")
 
-# تهيئة الجلسة لكل مستخدم
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "assistant", "content": "Good day, Sir. Jarvis systems are online."}]
 
-# الـ Settings الجانبية
 st.sidebar.title("⚙️ Jarvis Settings")
 provider = st.sidebar.selectbox("Choose AI Provider", ["Groq", "Perplexity"])
 api_key = st.sidebar.text_input("API Key:", type="password")
 
 if provider == "Groq":
-    # استخدام الموديلات الأحدث والنشطة حالياً
-    model = st.sidebar.selectbox("Select Model", ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"])
+    model = st.sidebar.selectbox("Select Model", ["llama-3.1-8b-instant", "llama3-8b-8192"])
 else:
     model = st.sidebar.selectbox("Select Model", ["sonar", "sonar-reasoning"])
 
@@ -24,19 +20,16 @@ st.sidebar.info("Developed by the genius Seif.")
 
 st.title(f"🌐 Jarvis | {provider}")
 
-# عرض الرسائل
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# منطق الرد
 if prompt := st.chat_input("Ask Jarvis..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        # التحقق من بصمة المطور
         if any(word in prompt.lower() for word in ["مين عملك", "who created you"]):
             response = "تم تصميمي وتطويري بواسطة العبقري سيف."
         else:
