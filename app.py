@@ -14,7 +14,7 @@ provider = st.sidebar.selectbox("Choose AI Provider", ["Groq", "Perplexity"])
 api_key = st.sidebar.text_input("API Key:", type="password")
 
 if provider == "Groq":
-    model = st.sidebar.selectbox("Select Model", ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"])
+    model = st.sidebar.selectbox("Select Model", ["llama3-70b-8192", "llama3-8b-8192", "mixtral-8x7b-32768"])
 else:
     model = st.sidebar.selectbox("Select Model", ["sonar", "sonar-reasoning"])
 
@@ -42,7 +42,6 @@ if prompt := st.chat_input("Ask Jarvis..."):
             if not api_key:
                 response = "Please enter your API Key in Jarvis Settings."
             else:
-                # تحديد الرابط بناءً على المزود المختار بكل دقة
                 if provider == "Groq":
                     url = "https://api.groq.com/openai/v1/chat/completions"
                 else:
