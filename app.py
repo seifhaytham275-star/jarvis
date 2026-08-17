@@ -1,85 +1,94 @@
 import datetime
 import os
-import subprocess
 import webbrowser
-import pyttsx3
-import speech_recognition as sr
+import tkinter as tk
+from tkinter import END, Entry, Text
 
-# تهيئة محرك الصوت (Text-to-Speech)
-engine = pyttsx3.init('sapi5')
-voices = engine.getProperty('voices')
-engine.setProperty('voice', voices[0].id)  # يمكنك تغيير رقم الصوت حسب المتاح في جهازك
+# إعداد نافذة الشات لنسخة Ultimate Pro ChatBox
+root = tk.Tk()
+root.title("Jarvis Ultimate Pro - ChatBox Edition")
+root.geometry("450x550")
+root.config(bg="#1e1e1e")
+root.resizable(False, False)
 
-def speak(audio):
-    """دالة لجعل جارفيس يتحدث بصوت عالٍ"""
-    engine.say(audio)
-    engine.runAndWait()
 
-def wish_me():
-    """دالة الترحيب بناءً على الوقت الحالي"""
-    hour = int(datetime.datetime.now().hour)
-    if 0 <= hour < 12:
-        speak("Good morning, Sir.")
-    elif 12 <= hour < 18:
-        speak("Good afternoon, Sir.")
-    else:
-        speak("Good evening, Sir.")
-    speak("Jarvis Ultimate Pro is online. All systems are fully operational.")
+def send_message(event=None):
+  query = entry_box.get().strip()
+  if not query:
+    return
 
-def take_command():
-    """دالة للاستماع للأوامر الصوتية من الميكروفون"""
-    r = sr.Recognizer()
-    with sr.Microphone() as source:
-        print("Listening...")
-        r.pause_threshold = 1
-        r.energy_threshold = 300  # تعديل حساسية الميكروفون إذا لزم الأمر
-        audio = r.listen(source)
+  # عرض رسالة المستخدم في الشات
+  chat_log.config(state=tk.NORMAL)
+  chat_log.insert(END, f"You: {query}\n")
 
-    try:
-        print("Recognizing...")
-        query = r.recognize_google(audio, language='en-US')
-        print(f"User said: {query}\n")
-    except Exception as e:
-        print("Say that again please...")
-        return "None"
-    return query.lower()
+  # معالجة الأوامر بنظام Ultimate Pro
+  response = process_command(query.lower())
+  chat_log.insert(END, f"Jarvis: {response}\n\n")
 
-if __name__ == "__main__":
-    wish_me()
-    
-    while True:
-        query = take_command()
+  chat_log.config(state=tk.DISABLED)
+  chat_log.yview(END)
+  entry_box.delete(0, END)
 
-        # الأوامر والوظائف الأساسية لنسخة Ultimate Pro
-        
-        if 'open youtube' in query:
-            speak("Opening YouTube, Sir.")
-            webbrowser.open("https://www.youtube.com")
 
-        elif 'open google' in query:
-            speak("Opening Google, Sir.")
-            webbrowser.open("https://www.google.com")
+def process_command(query):
+  if "open youtube" in query or "يوتيوب" in query:
+    webbrowser.open("https://www.youtube.com")
+    return "Opening YouTube, Sir."
 
-        elif 'open tiktok' in query:
-            speak("Opening TikTok, Sir.")
-            webbrowser.open("https://www.tiktok.com")
+  elif "open google" in query or "جوجل" in query:
+    webbrowser.open("https://www.google.com")
+    return "Opening Google, Sir."
 
-        elif 'open calendar' in query:
-            speak("Opening Calendar, Sir.")
-            os.system("start outlookcal:")
+  elif "open tiktok" in query or "تيك توك" in query:
+    webbrowser.open("https://www.tiktok.com")
+    return "Opening TikTok, Sir."
 
-        elif 'open calculator' in query:
-            speak("Opening Calculator, Sir.")
-            os.system("calc")
+  elif "open calendar" in query or "كالندر" in query:
+    os.system("start outlookcal:")
+    return "Opening Calendar, Sir."
 
-        elif 'open notepad' in query:
-            speak("Opening Notepad, Sir.")
-            os.system("notepad")
+  elif "open calculator" in query or "حاسبة" in query:
+    os.system("calc")
+    return "Opening Calculator, Sir."
 
-        elif 'the time' in query:
-            strTime = datetime.datetime.now().strftime("%H:%M:%S")
-            speak(f"Sir, the time is {strTime}")
+  elif "open notepad" in query or "نوت باد" in query:
+    os.system("notepad")
+    return "Opening Notepad, Sir."
 
-        elif 'exit' in query or 'quit' in query or 'shutdown' in query:
-            speak("Shutting down systems. Goodbye, Sir.")
-            break
+  elif "time" in query or "الوقت" in query:
+    str_time = datetime.datetime.now().strftime("%H:%M:%S")
+    return f"Sir, the time is {str_time}"
+
+  elif "hello" in query or "hi" in query:
+    return "Jarvis Ultimate Pro ChatBox is online. All systems operational, Sir."
+
+  else:
+    return f"Command '{query}' processed successfully, Sir."
+
+
+# شاشة عرض المحادثة
+chat_log = Text(
+    root, bg="#2d2d2d", fg="#00ffcc", font=("Consolas", 11), wrap=tk.WORD
+)
+chat_log.place(x=10, y=10, width=430, height=460)
+chat_log.config(state=tk.DISABLED)
+
+# خانة كتابة الرسالة
+entry_box = Entry(root, bg="#3d3d3d", fg="#ffffff", font=("Consolas", 12))
+entry_box.place(x=10, y=485, width=330, height=40)
+entry_box.bind("<Return>", send_message)
+entry_box.focus()
+
+# زر الإرسال
+send_btn = tk.Button(
+    root,
+    text="Send",
+    bg="#007acc",
+    fg="#ffffff",
+    font=("Consolas", 10, "bold"),
+    command=send_message,
+)
+send_btn.place(x=350, y=485, width=90, height=40)
+
+# تشغيل التطبيق
+root.mainloop()
