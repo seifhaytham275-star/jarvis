@@ -10,9 +10,13 @@ if "messages" not in st.session_state:
 
 # الـ Settings الجانبية
 st.sidebar.title("⚙️ Jarvis Settings")
-provider = st.sidebar.selectbox("Choose AI Provider", ["Groq Console", "Perplexity"])
+provider = st.sidebar.selectbox("Choose AI Provider", ["Groq", "Perplexity"])
 api_key = st.sidebar.text_input("API Key:", type="password")
-model = st.sidebar.selectbox("Select Model", ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "sonar-reasoning"])
+
+if provider == "Groq":
+    model = st.sidebar.selectbox("Select Model", ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"])
+else:
+    model = st.sidebar.selectbox("Select Model", ["sonar", "sonar-reasoning"])
 
 st.sidebar.markdown("---")
 st.sidebar.info("Developed by the genius Seif.")
@@ -38,8 +42,8 @@ if prompt := st.chat_input("Ask Jarvis..."):
             if not api_key:
                 response = "Please enter your API Key in Jarvis Settings."
             else:
-                # اختيار الـ URL الصحيح والموديل المظبوط
-                if provider == "Groq Console":
+                # تحديد الرابط بناءً على المزود المختار بكل دقة
+                if provider == "Groq":
                     url = "https://api.groq.com/openai/v1/chat/completions"
                 else:
                     url = "https://api.perplexity.ai/chat/completions"
@@ -52,7 +56,7 @@ if prompt := st.chat_input("Ask Jarvis..."):
                 payload = {
                     "model": model,
                     "messages": [
-                        {"role": "system", "content": "You are Jarvis, created by the genius Seif. Respond in the user's language."},
+                        {"role": "system", "content": "You are Jarvis, created by the genius Seif. Respond in the user's language accurately."},
                         {"role": "user", "content": prompt}
                     ]
                 }
@@ -62,10 +66,8 @@ if prompt := st.chat_input("Ask Jarvis..."):
                     
                     if res.status_code == 200:
                         response = res.json()['choices'][0]['message']['content']
-                    elif res.status_code == 404:
-                        response = "Error 404: The URL is incorrect. Check if you selected the right provider."
                     else:
-                        response = f"Error {res.status_code}: {res.text}"
+                        response = f"API Error ({res.status_code}): {res.text}"
                         
                 except Exception as e:
                     response = f"Connection error: {str(e)}"
