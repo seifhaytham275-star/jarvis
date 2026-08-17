@@ -1,186 +1,96 @@
-import datetime
-from html.parser import HTMLParser
+import base64
+import io
 import requests
+from gtts import gTTS
+import google.generativeai as genai
 import streamlit as st
 
-st.set_page_config(
-    page_title="Jarvis Ultimate Stark - God Mode",
-    page_icon="⚡",
-    layout="centered",
-)
+# 1. Page Configuration
+st.set_page_config(page_title="Jarvis Web AI", page_icon="🌐", layout="centered")
+st.title("🌐 Jarvis AI | Live Search Companion")
 
-st.title("⚡ Jarvis Ultimate Stark (God Mode)")
-st.write(
-    "System Status: Online | Zero-Dependency Search & Task Management Active"
-    " (100% Free)"
-)
+# 2. Hardcoded Serper API Key & Sidebar Configuration
+SEARCH_API_KEY = "1a0f4872c2d6980e9cfcb5ddbab95990293333d5"
 
+st.sidebar.title("⚙️ Jarvis Settings")
+gemini_key = st.sidebar.text_input("Enter Gemini API Key:", type="password")
 
-# محلل HTML مدمج في بايثون (لا يحتاج تثبيت)
-class DuckDuckGoLiteParser(HTMLParser):
-
-  def __init__(self):
-    super().__init__()
-    self.capture = False
-    self.snippets = []
-
-  def handle_starttag(self, tag, attrs):
-    for attr, value in attrs:
-      if attr == "class" and "result-snippet" in value:
-        self.capture = True
-
-  def handle_endtag(self, tag):
-    if tag == "td":
-      self.capture = False
-
-  def handle_data(self, data):
-    if self.capture:
-      text = data.strip()
-      if text:
-        self.snippets.append(text)
-
-
-# تهيئة سجل المحادثة والمهام
-if "messages" not in st.session_state:
-  st.session_state.messages = []
-
-if "tasks" not in st.session_state:
-  st.session_state.tasks = []
-
-# عرض المحادثات السابقة
-for message in st.session_state.messages:
-  with st.chat_message(message["role"]):
-    st.markdown(message["content"])
-
-# استقبال مدخلات المستخدم بالعامية المصرية أو الإنجليزية
-if query := st.chat_input("كلمني بالعامية المصرية أو الإنجليزية يا سيدي..."):
-  st.chat_message("user").markdown(query)
-  st.session_state.messages.append({"role": "user", "content": query})
-
-  query_lower = query.lower()
-  response = ""
-
-  is_english = any(
-      ord(char) < 128 and char.isalpha() for char in query
-  ) and not any(
-      ar_word in query
-      for ar_word in [
-          "فين",
-          "إيه",
-          "كام",
-          "الساعة",
-          "ازيك",
-          "عايز",
-          "ايه",
-          "الجو",
-          "ليه",
-          "مين",
-      ]
-  )
-
-  # 1. الوقت والتاريخ
-  if (
-      "time" in query_lower
-      or "الساعة" in query_lower
-      or "الوقت" in query_lower
-  ):
-    str_time = datetime.datetime.now().strftime("%H:%M:%S")
-    if is_english:
-      response = f"The time is {str_time}, Sir. Time flies when you're building the future."
-    else:
-      response = f"الساعة دلوقتي يا سيدي {str_time}، الوقت بيعدي وإحنا بنبتكر."
-
-  # 2. إدارة المهام وتنظيم الحياة
-  elif (
-      "مهمة" in query_lower
-      or "task" in query_lower
-      or "اضف" in query_lower
-      or "add" in query_lower
-  ):
-    clean_task = (
-        query.replace("مهمة", "")
-        .replace("task", "")
-        .replace("اضف", "")
-        .replace("add", "")
-        .strip()
-    )
-    if clean_task:
-      st.session_state.tasks.append(clean_task)
-      if is_english:
-        response = f"Task '{clean_task}' added, Sir. No room for laziness in Stark Tower."
-      else:
-        response = f"تم تسجيل المهمة ('{clean_task}') يا بطل. مفيش مكان للكسل في برج ستارك!"
-    else:
-      response = "حدد المهمة بوضوح يا سيدي عشان أسجلها."
-
-  elif "مهامي" in query_lower or "tasks" in query_lower:
-    if not st.session_state.tasks:
-      response = (
-          "قائمتك فاضية خالص يا سيدي. عايشها فري ولا ناسي شغلك؟"
-          if not is_english
-          else "Your task list is completely empty, Sir. Living life freely or just forgetting?"
-      )
-    else:
-      tasks_list = "\n".join([f"- {t}" for t in st.session_state.tasks])
-      response = (
-          f"دي مهامك الحالية يا سيدي:\n{tasks_list}"
-          if not is_english
-          else f"Here are your current tasks, Sir:\n{tasks_list}"
-      )
-
-  # 3. البحث المباشر السريع بدون أخطاء تثبيت
-  else:
+# 3. British Accent Audio Function
+def speak(text):
     try:
-      url = "https://lite.duckduckgo.com/lite/"
-      data = {"q": query}
-      headers = {
-          "User-Agent": (
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-          )
-      }
-      res = requests.post(url, data=data, headers=headers, timeout=5)
+        tts = gTTS(text=text, lang="en", tld="co.uk")
+        fp = io.BytesIO()
+        tts.write_to_fp(fp)
+        fp.seek(0)
+        b64 = base64.b64encode(fp.read()).decode()
+        audio_html = f'<audio autoplay style="display:none;"><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>'
+        st.markdown(audio_html, unsafe_allow_html=True)
+    except Exception:
+        pass
 
-      if res.status_code == 200:
-        parser = DuckDuckGoLiteParser()
-        parser.feed(res.text)
-        snippets = [f"• {s}" for s in parser.snippets[:3]]
+# 4. Live Web Search Function (Serper API)
+def search_web(query):
+    try:
+        url = "https://google.serper.dev/search"
+        headers = {
+            'X-API-KEY': SEARCH_API_KEY,
+            'Content-Type': 'application/json'
+        }
+        payload = {"q": query}
+        response = requests.post(url, headers=headers, json=payload).json()
+        
+        organic_results = response.get("organic", [])[:3]
+        snippets = [f"- {item.get('title')}: {item.get('snippet')}" for item in organic_results]
+        return "\n".join(snippets)
+    except Exception:
+        return ""
 
-        if snippets:
-          joined_snippets = "\n\n".join(snippets)
-          response = (
-              f"**[Stark Live Search Protocol]:**\n\n{joined_snippets}\n\n*النتائج قدامك يا سيدي من قلب الويب مباشرة وبدون لف ودوران.*"
-              if not is_english
-              else f"**[Stark Live Search Protocol]:**\n\n{joined_snippets}\n\n*Here are the live web results, Sir.*"
-          )
-        else:
-          response = (
-              f"دورت على '{query}' بس ملقيتش تفاصيل واضحة يا سيدي."
-              if not is_english
-              else f"Searched for '{query}', but found no clear details, Sir."
-          )
-      else:
-        response = (
-            "السيرفر بياخد بريك قصير يا سيدي، جرب سؤالاً آخر."
-            if not is_english
-            else "The server is taking a short break, Sir. Try another query."
-        )
-    except Exception as e:
-      response = (
-          f"حصل خطأ بسيط أثناء البحث يا سيدي: {str(e)}"
-          if not is_english
-          else f"An error occurred while searching, Sir: {str(e)}"
-      )
+# 5. System Persona and Memory Management
+SYSTEM_INSTRUCTION = """
+You are Jarvis, Seif's witty, highly intelligent, and loyal British AI personal assistant.
+- Use the live web search context provided to deliver accurate and up-to-date answers.
+- Speak in a natural, refined British tone (use 'Sir', 'Splendid', 'Brilliant', 'Right away, Seif').
+- Keep the conversation interactive, engaging, and friendly.
+"""
 
-  # عرض رد جارفيس
-  with st.chat_message("assistant"):
-    st.markdown(response)
-  st.session_state.messages.append({"role": "assistant", "content": response})
+if "messages" not in st.session_state:
+    st.session_state.messages = [{"role": "assistant", "content": "Good day, Seif. Web search systems are active. How may I assist you today, sir?"}]
 
-# شريط جانبي لإدارة المهام السريعة
-with st.sidebar:
-  st.subheader("📋 مهام توني ستارك / Stark Tasks")
-  if st.session_state.tasks:
-    for idx, t in enumerate(st.session_state.tasks, 1):
-      st.write(f"{idx}. {t}")
-  else:
-    st.write("مفيش مهام حالياً / No tasks currently.")
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+
+# 6. User Input Processing
+if user_input := st.chat_input("Ask Jarvis or search anything..."):
+    st.chat_message("user").markdown(user_input)
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    
+    if not gemini_key:
+        reply = "Please enter your Gemini API key in the sidebar, Seif!"
+    else:
+        try:
+            web_data = search_web(user_input)
+            
+            prompt = f"User Question: {user_input}\n"
+            if web_data:
+                prompt += f"\nLive Search Results from Web:\n{web_data}\n"
+
+            genai.configure(api_key=gemini_key)
+            model = genai.GenerativeModel("gemini-1.5-flash", system_instruction=SYSTEM_INSTRUCTION)
+            
+            # Rebuild Chat History for Gemini Memory
+            gemini_history = []
+            for m in st.session_state.messages[:-1]:
+                role = "user" if m["role"] == "user" else "model"
+                gemini_history.append({"role": role, "parts": [m["content"]]})
+
+            chat = model.start_chat(history=gemini_history)
+            response = chat.send_message(prompt)
+            reply = response.text
+        except Exception:
+            reply = "I encountered a connection issue while reaching the search servers, Seif."
+
+    with st.chat_message("assistant"):
+        st.markdown(reply)
+        speak(reply)
+    st.session_state.messages.append({"role": "assistant", "content": reply})
