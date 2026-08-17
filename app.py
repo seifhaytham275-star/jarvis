@@ -14,8 +14,7 @@ provider = st.sidebar.selectbox("Choose AI Provider", ["Groq", "Perplexity"])
 api_key = st.sidebar.text_input("API Key:", type="password")
 
 if provider == "Groq":
-    # استخدام الموديل المدعوم والمستقر تماماً للحسابات المجانية والتجارية
-    model = st.sidebar.selectbox("Select Model", ["llama-3.1-8b-instant", "llama3-8b-8192"])
+    model = st.sidebar.selectbox("Select Model", ["llama3-8b-8192", "llama3-70b-8192"])
 else:
     model = st.sidebar.selectbox("Select Model", ["sonar", "sonar-reasoning"])
 
