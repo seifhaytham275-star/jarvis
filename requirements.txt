@@ -5,3 +5,4 @@ pillow
 audio-recorder-streamlit
 gTTS
 googlesearch-python
+beautifulsoup4
