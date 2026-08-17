@@ -6,9 +6,10 @@ st.set_page_config(
     page_title="Jarvis Ultimate Stark", page_icon="⚡", layout="centered"
 )
 
-st.title("⚡ Jarvis Ultimate Stark (Clean Protocol)")
+st.title("⚡ Jarvis Ultimate Stark (Egyptian & English)")
 st.write(
-    "System Status: Online | Filtered Arabic Search: Active (100% Free & Clean)"
+    "System Status: Online | Dual-Language Protocol: Active (Egyptian Slang &"
+    " English, 100% Free)"
 )
 
 # تهيئة سجل المحادثة والمهام
@@ -23,49 +24,80 @@ for message in st.session_state.messages:
   with st.chat_message(message["role"]):
     st.markdown(message["content"])
 
-# استقبال مدخلات المستخدم
-if query := st.chat_input("أعطني أمراً أو اسألني عن أي شيء يا سيدي..."):
+# استقبال مدخلات المستخدم بالعامية أو الإنجليزية
+if query := st.chat_input("كلمني بالعامية المصرية أو الإنجليزية يا سيدي..."):
   st.chat_message("user").markdown(query)
   st.session_state.messages.append({"role": "user", "content": query})
 
   query_lower = query.lower()
   response = ""
 
+  # اكتشاف ما إذا كانت اللغة الإنجليزية هي الغالبة
+  is_english = any(ord(char) < 128 and char.isalpha() for char in query) and not any(
+      ar_word in query for ar_word in ["فين", "إيه", "كام", "الساعة", "ازيك", "عايز", "ايه", "الجو", "ليه"]
+  )
+
   # 1. الوقت والتاريخ
-  if "time" in query_lower or "الوقت" in query_lower:
+  if "time" in query_lower or "الساعة" in query_lower or "الوقت" in query_lower:
     str_time = datetime.datetime.now().strftime("%H:%M:%S")
-    response = f"الوقت الآن يا سيدي هو {str_time}. الوقت يمر، ونحن نبتكر."
+    if is_english:
+      response = f"The time is {str_time}, Sir. Time flies when you're building the future."
+    else:
+      response = f"الساعة دلوقتي يا سيدي {str_time}، الوقت بيعدي وإحنا بنبتكر."
 
   # 2. إدارة المهام وتنظيم الحياة
-  elif "مهمة" in query_lower or "task" in query_lower:
-    clean_task = query.replace("مهمة", "").replace("task", "").strip()
-    st.session_state.tasks.append(clean_task)
-    response = f"تم تسجيل المهمة ('{clean_task}') في جدول أعمالك يا سيدي. لا مكان للكسل في برج ستارك."
+  elif "مهمة" in query_lower or "task" in query_lower or "اضف" in query_lower or "add" in query_lower:
+    clean_task = (
+        query.replace("مهمة", "")
+        .replace("task", "")
+        .replace("اضف", "")
+        .replace("add", "")
+        .strip()
+    )
+    if clean_task:
+      st.session_state.tasks.append(clean_task)
+      if is_english:
+        response = f"Task '{clean_task}' added, Sir. No room for laziness in Stark Tower."
+      else:
+        response = f"تم تسجيل المهمة ('{clean_task}') يا بطل. مفيش مكان للكسل في برج ستارك!"
+    else:
+      response = "حدد المهمة بوضوح يا سيدي عشان أسجلها."
 
   elif "مهامي" in query_lower or "tasks" in query_lower:
     if not st.session_state.tasks:
       response = (
-          "قائمتك فارغة تماماً. هل تعيش بحرية مطلقة أم أنك تنسى مهامك يا سيدي؟"
+          "قائمتك فاضية خالص يا سيدي. عايشها فري ولا ناسي شغلك؟"
+          if not is_english
+          else "Your task list is completely empty, Sir. Living life freely or just forgetting?"
       )
     else:
       tasks_list = "\n".join([f"- {t}" for t in st.session_state.tasks])
-      response = f"إليك مهامك الحالية يا سيدي:\n{tasks_list}"
+      response = (
+          f"دي مهامك الحالية يا سيدي:\n{tasks_list}"
+          if not is_english
+          else f"Here are your current tasks, Sir:\n{tasks_list}"
+      )
 
-  # 3. البحث الذكي المفلتر (لغة عربية فقط لمنع أي نصوص غريبة)
+  # 3. البحث الآمن المجاني (يدعم العربي والإنجليزي)
   else:
     try:
       search_url = "https://searx.be/search"
-      # تحديد لغة البحث العربية لتفادي أي لغات أخرى أو حروف صينية
-      params = {"q": query, "format": "json", "language": "ar"}
+      params = {
+          "q": query,
+          "format": "json",
+          "language": "en" if is_english else "ar",
+      }
       headers = {
           "User-Agent": (
               "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
           )
       }
 
-      res = requests.get(search_url, params=params, headers=headers, timeout=5)
+      res = requests.get(search_url, params=params, headers=headers, timeout=4)
 
-      if res.status_code == 200:
+      if res.status_code == 200 and "application/json" in res.headers.get(
+          "Content-Type", ""
+      ):
         data = res.json()
         results = data.get("results", [])
         if results:
@@ -75,14 +107,28 @@ if query := st.chat_input("أعطني أمراً أو اسألني عن أي ش�
                   for r in results[:2]
               ]
           )
-          response = f"**[Stark Clean Search]:**\n\n{snippets}\n\n*إليك النتائج واضحة وموثوقة يا سيدي، بدون أي تشتيت.*"
+          response = (
+              f"**[Stark Secure Search]:**\n\n{snippets}\n\n*النتائج قدامك يا سيدي بدقة تامة وبدون لف ودوران.*"
+              if not is_english
+              else f"**[Stark Secure Search]:**\n\n{snippets}\n\n*Here are the precise results, Sir.*"
+          )
         else:
-          response = f"أمرك '{query}' قيد التنفيذ يا سيدي، لكن لم أجد نتائج عربية مطابقة في الأرشيف."
+          response = (
+              f"دورت على '{query}' بس ملقيتش نتائج واضحة يا سيدي."
+              if not is_english
+              else f"Searched for '{query}', but found no clear results, Sir."
+          )
       else:
-        response = f"أمرك '{query}' قيد التنفيذ يا سيدي."
-    except Exception as e:
+        response = (
+            "السيرفر الحر بياخد بريك قصير يا سيدي، بس أنظمتنا شغال زي الفل."
+            if not is_english
+            else "The free server is taking a short break, Sir, but our systems are fully operational."
+        )
+    except Exception:
       response = (
-          f"عذراً يا سيدي، حدث خطأ بسيط أثناء معالجة البيانات: {str(e)}"
+          "حصل ضغط مؤقت في الشبكة يا سيدي، توني ستارك مسيطر على الوضع تماماً."
+          if not is_english
+          else "Temporary network congestion, Sir. Tony Stark has full control."
       )
 
   # عرض رد جارفيس
@@ -90,11 +136,11 @@ if query := st.chat_input("أعطني أمراً أو اسألني عن أي ش�
     st.markdown(response)
   st.session_state.messages.append({"role": "assistant", "content": response})
 
-# شريط جانبي لإدارة المهام السريعة وتنظيم الحياة
+# شريط جانبي لإدارة المهام السريعة
 with st.sidebar:
-  st.subheader("📋 مهام توني ستارك")
+  st.subheader("📋 مهام توني ستارك / Stark Tasks")
   if st.session_state.tasks:
     for idx, t in enumerate(st.session_state.tasks, 1):
       st.write(f"{idx}. {t}")
   else:
-    st.write("لا توجد مهام مسجلة حالياً.")
+    st.write("مفيش مهام حالياً / No tasks currently.")
