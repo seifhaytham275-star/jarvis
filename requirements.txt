@@ -1,4 +1,6 @@
 streamlit
+gTTS
+google-generativeai
 requests
-beautifulsoup4
+
 
