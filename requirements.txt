@@ -4,4 +4,4 @@ requests
 pillow
 audio-recorder-streamlit
 gTTS
-googlesearh-python
+googlesearch-python
