@@ -6,10 +6,10 @@ st.set_page_config(
     page_title="Jarvis Ultimate Stark", page_icon="⚡", layout="centered"
 )
 
-st.title("⚡ Jarvis Ultimate Stark (Egyptian & English)")
+st.title("⚡ Jarvis Ultimate Stark (Multi-Server Protocol)")
 st.write(
-    "System Status: Online | Dual-Language Protocol: Active (Egyptian Slang &"
-    " English, 100% Free)"
+    "System Status: Online | Auto-Failover Search Active (100% Free, No API"
+    " Key)"
 )
 
 # تهيئة سجل المحادثة والمهام
@@ -32,7 +32,6 @@ if query := st.chat_input("كلمني بالعامية المصرية أو ال�
   query_lower = query.lower()
   response = ""
 
-  # اكتشاف ما إذا كانت اللغة الإنجليزية هي الغالبة
   is_english = any(ord(char) < 128 and char.isalpha() for char in query) and not any(
       ar_word in query for ar_word in ["فين", "إيه", "كام", "الساعة", "ازيك", "عايز", "ايه", "الجو", "ليه"]
   )
@@ -78,57 +77,56 @@ if query := st.chat_input("كلمني بالعامية المصرية أو ال�
           else f"Here are your current tasks, Sir:\n{tasks_list}"
       )
 
-  # 3. البحث الآمن المجاني (يدعم العربي والإنجليزي)
+  # 3. البحث الذكي مع تدوير السيرفرات (Multi-Server Fallback)
   else:
-    try:
-      search_url = "https://searx.be/search"
-      params = {
-          "q": query,
-          "format": "json",
-          "language": "en" if is_english else "ar",
-      }
-      headers = {
-          "User-Agent": (
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-          )
-      }
+    search_servers = [
+        "https://searx.be/search",
+        "https://searx.tiekoetter.com/search",
+        "https://search.ononoki.org/search",
+    ]
+    
+    success = False
+    results = []
 
-      res = requests.get(search_url, params=params, headers=headers, timeout=4)
+    for server in search_servers:
+      try:
+        params = {
+            "q": query,
+            "format": "json",
+            "language": "en" if is_english else "ar",
+        }
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            )
+        }
+        res = requests.get(server, params=params, headers=headers, timeout=3)
+        if res.status_code == 200 and "application/json" in res.headers.get("Content-Type", ""):
+          data = res.json()
+          results = data.get("results", [])
+          if results:
+            success = True
+            break
+      except:
+        continue
 
-      if res.status_code == 200 and "application/json" in res.headers.get(
-          "Content-Type", ""
-      ):
-        data = res.json()
-        results = data.get("results", [])
-        if results:
-          snippets = "\n\n".join(
-              [
-                  f"• **{r.get('title', 'بدون عنوان')}**\n{r.get('content', '')}"
-                  for r in results[:2]
-              ]
-          )
-          response = (
-              f"**[Stark Secure Search]:**\n\n{snippets}\n\n*النتائج قدامك يا سيدي بدقة تامة وبدون لف ودوران.*"
-              if not is_english
-              else f"**[Stark Secure Search]:**\n\n{snippets}\n\n*Here are the precise results, Sir.*"
-          )
-        else:
-          response = (
-              f"دورت على '{query}' بس ملقيتش نتائج واضحة يا سيدي."
-              if not is_english
-              else f"Searched for '{query}', but found no clear results, Sir."
-          )
-      else:
-        response = (
-            "السيرفر الحر بياخد بريك قصير يا سيدي، بس أنظمتنا شغال زي الفل."
-            if not is_english
-            else "The free server is taking a short break, Sir, but our systems are fully operational."
-        )
-    except Exception:
+    if success and results:
+      snippets = "\n\n".join(
+          [
+              f"• **{r.get('title', 'بدون عنوان')}**\n{r.get('content', '')}"
+              for r in results[:2]
+          ]
+      )
       response = (
-          "حصل ضغط مؤقت في الشبكة يا سيدي، توني ستارك مسيطر على الوضع تماماً."
+          f"**[Stark Secure Search]:**\n\n{snippets}\n\n*النتائج قدامك يا سيدي بدقة تامة وبدون لف ودوران.*"
           if not is_english
-          else "Temporary network congestion, Sir. Tony Stark has full control."
+          else f"**[Stark Secure Search]:**\n\n{snippets}\n\n*Here are the precise results, Sir.*"
+      )
+    else:
+      response = (
+          "جرت محاولة عبر جميع السيرفرات الحرة ولكنها مضغوطة حالياً يا سيدي، أنظمتنا تعمل بامتياز، جرب سؤالاً آخر."
+          if not is_english
+          else "All free servers are busy right now, Sir, but our internal systems are fully operational."
       )
 
   # عرض رد جارفيس
