@@ -1,8 +1,2 @@
 streamlit
-groq
 requests
-pillow
-audio-recorder-streamlit
-gTTS
-googlesearch-python
-beautifulsoup
