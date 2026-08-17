@@ -4,6 +4,4 @@ requests
 pillow
 audio-recorder-streamlit
 gTTS
-chromadb
-sentence-transformers
 googlesearh-python
