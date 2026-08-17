@@ -6,10 +6,10 @@ st.set_page_config(
     page_title="Jarvis Ultimate Stark", page_icon="⚡", layout="centered"
 )
 
-st.title("⚡ Jarvis Ultimate Stark (Multi-Server Protocol)")
+st.title("⚡ Jarvis Ultimate Stark (Wikidata Protocol)")
 st.write(
-    "System Status: Online | Auto-Failover Search Active (100% Free, No API"
-    " Key)"
+    "System Status: Online | Knowledge Graph Active (100% Free, No API Key, No"
+    " Timeouts)"
 )
 
 # تهيئة سجل المحادثة والمهام
@@ -32,20 +32,42 @@ if query := st.chat_input("كلمني بالعامية المصرية أو ال�
   query_lower = query.lower()
   response = ""
 
-  is_english = any(ord(char) < 128 and char.isalpha() for char in query) and not any(
-      ar_word in query for ar_word in ["فين", "إيه", "كام", "الساعة", "ازيك", "عايز", "ايه", "الجو", "ليه"]
+  is_english = any(
+      ord(char) < 128 and char.isalpha() for char in query
+  ) and not any(
+      ar_word in query
+      for ar_word in [
+          "فين",
+          "إيه",
+          "كام",
+          "الساعة",
+          "ازيك",
+          "عايز",
+          "ايه",
+          "الجو",
+          "ليه",
+      ]
   )
 
   # 1. الوقت والتاريخ
-  if "time" in query_lower or "الساعة" in query_lower or "الوقت" in query_lower:
+  if (
+      "time" in query_lower
+      or "الساعة" in query_lower
+      or "الوقت" in query_lower
+  ):
     str_time = datetime.datetime.now().strftime("%H:%M:%S")
     if is_english:
       response = f"The time is {str_time}, Sir. Time flies when you're building the future."
     else:
-      response = f"الساعة دلوقتي يا سيدي {str_time}، الوقت بيعدي وإحنا بنبتكر."
+      response = f"الساعة دلوقتي يا سيدي {str_time}, الوقت بيعدي وإحنا بنبتكر."
 
   # 2. إدارة المهام وتنظيم الحياة
-  elif "مهمة" in query_lower or "task" in query_lower or "اضف" in query_lower or "add" in query_lower:
+  elif (
+      "مهمة" in query_lower
+      or "task" in query_lower
+      or "اضف" in query_lower
+      or "add" in query_lower
+  ):
     clean_task = (
         query.replace("مهمة", "")
         .replace("task", "")
@@ -77,56 +99,52 @@ if query := st.chat_input("كلمني بالعامية المصرية أو ال�
           else f"Here are your current tasks, Sir:\n{tasks_list}"
       )
 
-  # 3. البحث الذكي مع تدوير السيرفرات (Multi-Server Fallback)
+  # 3. البحث الذكي المستقر عبر Wikidata API
   else:
-    search_servers = [
-        "https://searx.be/search",
-        "https://searx.tiekoetter.com/search",
-        "https://search.ononoki.org/search",
-    ]
-    
-    success = False
-    results = []
+    try:
+      url = "https://www.wikidata.org/w/api.php"
+      params = {
+          "action": "wbsearchentities",
+          "search": query,
+          "language": "en" if is_english else "ar",
+          "format": "json",
+      }
+      headers = {"User-Agent": "JarvisStarkBot/1.0 (StarkTower)"}
 
-    for server in search_servers:
-      try:
-        params = {
-            "q": query,
-            "format": "json",
-            "language": "en" if is_english else "ar",
-        }
-        headers = {
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            )
-        }
-        res = requests.get(server, params=params, headers=headers, timeout=3)
-        if res.status_code == 200 and "application/json" in res.headers.get("Content-Type", ""):
-          data = res.json()
-          results = data.get("results", [])
-          if results:
-            success = True
-            break
-      except:
-        continue
+      res = requests.get(url, params=params, headers=headers, timeout=5)
 
-    if success and results:
-      snippets = "\n\n".join(
-          [
-              f"• **{r.get('title', 'بدون عنوان')}**\n{r.get('content', '')}"
-              for r in results[:2]
-          ]
-      )
+      if res.status_code == 200:
+        data = res.json()
+        search_results = data.get("search", [])
+        if search_results:
+          snippets = "\n\n".join(
+              [
+                  f"• **{r.get('label', '')}**\n{r.get('description', 'لا توجد تفاصيل إضافية')}"
+                  for r in search_results[:3]
+              ]
+          )
+          response = (
+              f"**[Stark Wikidata Intelligence]:**\n\n{snippets}\n\n*البيانات مستخرجة بدقة تامة يا سيدي وبدون أي تقطيع.*"
+              if not is_english
+              else f"**[Stark Wikidata Intelligence]:**\n\n{snippets}\n\n*Here are the precise details, Sir.*"
+          )
+        else:
+          response = (
+              f"دورت على '{query}' في قاعدة البيانات بس ملقيتش نتائج مطابقة يا سيدي."
+              if not is_english
+              else f"Searched for '{query}' in the database, but found no matching results, Sir."
+          )
+      else:
+        response = (
+            "حصل خطأ بسيط في الاتصال بقاعدة البيانات يا سيدي، جرب سؤالاً آخر."
+            if not is_english
+            else "A slight connection error occurred, Sir. Try another query."
+        )
+    except Exception as e:
       response = (
-          f"**[Stark Secure Search]:**\n\n{snippets}\n\n*النتائج قدامك يا سيدي بدقة تامة وبدون لف ودوران.*"
+          f"حدث خطأ تقني يا سيدي: {str(e)}"
           if not is_english
-          else f"**[Stark Secure Search]:**\n\n{snippets}\n\n*Here are the precise results, Sir.*"
-      )
-    else:
-      response = (
-          "جرت محاولة عبر جميع السيرفرات الحرة ولكنها مضغوطة حالياً يا سيدي، أنظمتنا تعمل بامتياز، جرب سؤالاً آخر."
-          if not is_english
-          else "All free servers are busy right now, Sir, but our internal systems are fully operational."
+          else f"Technical error occurred, Sir: {str(e)}"
       )
 
   # عرض رد جارفيس
