@@ -1,94 +1,72 @@
 import datetime
 import os
 import webbrowser
-import tkinter as tk
-from tkinter import END, Entry, Text
+import streamlit as st
 
-# إعداد نافذة الشات لنسخة Ultimate Pro ChatBox
-root = tk.Tk()
-root.title("Jarvis Ultimate Pro - ChatBox Edition")
-root.geometry("450x550")
-root.config(bg="#1e1e1e")
-root.resizable(False, False)
+st.set_page_config(
+    page_title="Jarvis Ultimate Pro", page_icon="🤖", layout="centered"
+)
 
+st.title("🤖 Jarvis Ultimate Pro - ChatBox")
+st.write("All systems operational, Sir. Type your command below.")
 
-def send_message(event=None):
-  query = entry_box.get().strip()
-  if not query:
-    return
+# تهيئة سجل المحادثة
+if "messages" not in st.session_state:
+  st.session_state.messages = []
 
-  # عرض رسالة المستخدم في الشات
-  chat_log.config(state=tk.NORMAL)
-  chat_log.insert(END, f"You: {query}\n")
+# عرض المحادثات السابقة
+for message in st.session_state.messages:
+  with st.chat_message(message["role"]):
+    st.markdown(message["content"])
 
-  # معالجة الأوامر بنظام Ultimate Pro
-  response = process_command(query.lower())
-  chat_log.insert(END, f"Jarvis: {response}\n\n")
+# استقبال مدخلات المستخدم عبر شات Streamlit
+if query := st.chat_input("How can I help you today, Sir?"):
+  # عرض رسالة المستخدم
+  st.chat_message("user").markdown(query)
+  st.session_state.messages.append({"role": "user", "content": query})
 
-  chat_log.config(state=tk.DISABLED)
-  chat_log.yview(END)
-  entry_box.delete(0, END)
+  # معالجة الأوامر
+  query_lower = query.lower()
 
-
-def process_command(query):
-  if "open youtube" in query or "يوتيوب" in query:
+  if "open youtube" in query_lower or "يوتيوب" in query_lower:
+    response = "Opening YouTube, Sir."
     webbrowser.open("https://www.youtube.com")
-    return "Opening YouTube, Sir."
 
-  elif "open google" in query or "جوجل" in query:
+  elif "open google" in query_lower or "جوجل" in query_lower:
+    response = "Opening Google, Sir."
     webbrowser.open("https://www.google.com")
-    return "Opening Google, Sir."
 
-  elif "open tiktok" in query or "تيك توك" in query:
+  elif "open tiktok" in query_lower or "تيك توك" in query_lower:
+    response = "Opening TikTok, Sir."
     webbrowser.open("https://www.tiktok.com")
-    return "Opening TikTok, Sir."
 
-  elif "open calendar" in query or "كالندر" in query:
-    os.system("start outlookcal:")
-    return "Opening Calendar, Sir."
+  elif "open calculator" in query_lower or "حاسبة" in query_lower:
+    response = "Opening Calculator, Sir."
+    try:
+      os.system("calc")
+    except:
+      pass
 
-  elif "open calculator" in query or "حاسبة" in query:
-    os.system("calc")
-    return "Opening Calculator, Sir."
+  elif "open notepad" in query_lower or "نوت باد" in query_lower:
+    response = "Opening Notepad, Sir."
+    try:
+      os.system("notepad")
+    except:
+      pass
 
-  elif "open notepad" in query or "نوت باد" in query:
-    os.system("notepad")
-    return "Opening Notepad, Sir."
-
-  elif "time" in query or "الوقت" in query:
+  elif "time" in query_lower or "الوقت" in query_lower:
     str_time = datetime.datetime.now().strftime("%H:%M:%S")
-    return f"Sir, the time is {str_time}"
+    response = f"Sir, the time is {str_time}"
 
-  elif "hello" in query or "hi" in query:
-    return "Jarvis Ultimate Pro ChatBox is online. All systems operational, Sir."
+  elif "hello" in query_lower or "hi" in query_lower:
+    response = (
+        "Jarvis Ultimate Pro ChatBox is online. All systems operational, Sir."
+    )
 
   else:
-    return f"Command '{query}' processed successfully, Sir."
+    response = f"Command '{query}' processed successfully, Sir."
 
-
-# شاشة عرض المحادثة
-chat_log = Text(
-    root, bg="#2d2d2d", fg="#00ffcc", font=("Consolas", 11), wrap=tk.WORD
-)
-chat_log.place(x=10, y=10, width=430, height=460)
-chat_log.config(state=tk.DISABLED)
-
-# خانة كتابة الرسالة
-entry_box = Entry(root, bg="#3d3d3d", fg="#ffffff", font=("Consolas", 12))
-entry_box.place(x=10, y=485, width=330, height=40)
-entry_box.bind("<Return>", send_message)
-entry_box.focus()
-
-# زر الإرسال
-send_btn = tk.Button(
-    root,
-    text="Send",
-    bg="#007acc",
-    fg="#ffffff",
-    font=("Consolas", 10, "bold"),
-    command=send_message,
-)
-send_btn.place(x=350, y=485, width=90, height=40)
-
-# تشغيل التطبيق
-root.mainloop()
+  # عرض رد جارفيس
+  with st.chat_message("assistant"):
+    st.markdown(response)
+  st.session_state.messages.append({"role": "assistant", "content": response})
