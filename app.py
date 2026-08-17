@@ -1,5 +1,5 @@
 import datetime
-from bs4 import BeautifulSoup
+from html.parser import HTMLParser
 import requests
 import streamlit as st
 
@@ -11,9 +11,34 @@ st.set_page_config(
 
 st.title("⚡ Jarvis Ultimate Stark (God Mode)")
 st.write(
-    "System Status: Online | Live Lite Search & Task Management Active"
-    " (100% Free, No Google)"
+    "System Status: Online | Zero-Dependency Search & Task Management Active"
+    " (100% Free)"
 )
+
+
+# محلل HTML مدمج في بايثون (لا يحتاج تثبيت)
+class DuckDuckGoLiteParser(HTMLParser):
+
+  def __init__(self):
+    super().__init__()
+    self.capture = False
+    self.snippets = []
+
+  def handle_starttag(self, tag, attrs):
+    for attr, value in attrs:
+      if attr == "class" and "result-snippet" in value:
+        self.capture = True
+
+  def handle_endtag(self, tag):
+    if tag == "td":
+      self.capture = False
+
+  def handle_data(self, data):
+    if self.capture:
+      text = data.strip()
+      if text:
+        self.snippets.append(text)
+
 
 # تهيئة سجل المحادثة والمهام
 if "messages" not in st.session_state:
@@ -103,7 +128,7 @@ if query := st.chat_input("كلمني بالعامية المصرية أو ال�
           else f"Here are your current tasks, Sir:\n{tasks_list}"
       )
 
-  # 3. البحث المباشر السريع باستخدام DuckDuckGo Lite (بدون جوجل وبدون أخطاء)
+  # 3. البحث المباشر السريع بدون أخطاء تثبيت
   else:
     try:
       url = "https://lite.duckduckgo.com/lite/"
@@ -116,13 +141,9 @@ if query := st.chat_input("كلمني بالعامية المصرية أو ال�
       res = requests.post(url, data=data, headers=headers, timeout=5)
 
       if res.status_code == 200:
-        soup = BeautifulSoup(res.text, "html.parser")
-        snippets = []
-        results = soup.find_all("td", class_="result-snippet")
-        for r in results[:3]:
-          text = r.get_text(strip=True)
-          if text:
-            snippets.append(f"• {text}")
+        parser = DuckDuckGoLiteParser()
+        parser.feed(res.text)
+        snippets = [f"• {s}" for s in parser.snippets[:3]]
 
         if snippets:
           joined_snippets = "\n\n".join(snippets)
