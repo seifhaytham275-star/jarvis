@@ -1,9 +1,8 @@
 import streamlit as st
 from groq import Groq
-from duckduckgo_search import DDGS
-import base64
-from streamlit_mic_recorder import mic_recorder
 import urllib.parse
+import requests
+from streamlit_mic_recorder import mic_recorder
 
 # --- Page Setup ---
 st.set_page_config(page_title="J.A.R.V.I.S. Prime", page_icon="🤖", layout="wide")
@@ -19,15 +18,32 @@ st.markdown("""
 if "chats" not in st.session_state: st.session_state.chats = {"Chat 1": []}
 if "active_chat" not in st.session_state: st.session_state.active_chat = "Chat 1"
 if "settings" not in st.session_state:
-    st.session_state.settings = {"voice": True, "mix": True, "api_key": "", "mic_enabled": True}
+    st.session_state.settings = {"voice": True, "mix": True, "api_key": "", "serper_key": "", "mic_enabled": True}
 
-# --- Functions ---
-def search_web(query):
+# --- Functions (Serper Search) ---
+def search_web_serper(query, serper_key):
+    if not serper_key:
+        return ""
     try:
-        with DDGS() as ddgs:
-            results = list(ddgs.text(query, max_results=3))
-            return "\n".join([f"- {r['title']}: {r['body']}" for r in results])
-    except: return ""
+        url = "https://google.serper.dev/search"
+        payload = {"q": query, "gl": "eg", "hl": "ar"}
+        headers = {
+            "X-API-KEY": serper_key,
+            "Content-Type": "application/json"
+        }
+        response = requests.post(url, json=payload, headers=headers, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            snippets = []
+            # جمع الـ Organic Results
+            for item in data.get("organic", [])[:3]:
+                title = item.get("title", "")
+                snippet = item.get("snippet", "")
+                snippets.append(f"- {title}: {snippet}")
+            return "\n".join(snippets)
+    except:
+        pass
+    return ""
 
 def open_youtube_search(query):
     encoded_query = urllib.parse.quote(query)
@@ -68,8 +84,9 @@ with st.sidebar:
     
     with tab2:
         st.session_state.settings["api_key"] = st.text_input("Groq API Key", type="password")
+        st.session_state.settings["serper_key"] = st.text_input("Serper API Key", type="password")
         st.session_state.settings["voice"] = st.toggle("Enable Voice Response", True)
-        st.session_state.settings["mic_enabled"] = st.toggle("Enable Microphone (Lock/Unlock)", True)
+        st.session_state.settings["mic_enabled"] = st.toggle("Enable Microphone", True)
         st.session_state.settings["mix"] = st.toggle("Mix Eloquent/Slang Arabic", True)
     
     with tab1:
@@ -91,7 +108,6 @@ active = st.session_state.active_chat
 for m in st.session_state.chats[active]:
     with st.chat_message(m["role"]): st.markdown(m["content"])
 
-# Input Section (مع ميزة قفل/فتح المايك)
 audio_info = None
 if st.session_state.settings.get("mic_enabled", True):
     audio_info = mic_recorder(key='mic', start_prompt="🎤 Hold to Speak")
@@ -122,6 +138,8 @@ if user_text:
     with st.chat_message("user"): st.markdown(user_text)
     
     api_key = st.session_state.settings.get("api_key")
+    serper_key = st.session_state.settings.get("serper_key")
+    
     if not api_key or len(api_key) < 10:
         st.error("⚠️ Please enter a valid Groq API Key in the Settings tab first!")
     else:
@@ -131,13 +149,13 @@ if user_text:
                 if any(kw in lower_text for kw in ["يوتيوب", "youtube", "تشغيل", "فيديو", "watch", "play", "مروان"]):
                     open_youtube_search(user_text)
 
-                trigger_keywords = ["سعر", "بحث", "مين", "أخبار", "بيلعب", "نادي", "price", "news", "search", "play", "club", "team"]
-                search_context = search_web(user_text) if any(kw in lower_text for kw in trigger_keywords) else ""
+                # تنفيذ البحث الاحترافي عبر Serper
+                search_context = search_web_serper(user_text, serper_key)
                 
                 system_prompt = (
-                    "You are J.A.R.V.I.S., sarcastic, sharp, witty. "
+                    "You are J.A.R.V.I.S., sarcastic, sharp, witty. Built by Seif. "
                     "If Arabic: mix eloquent Arabic with Egyptian street slang. If English: British accent. "
-                    f"Web Context: {search_context}"
+                    f"Google Search Context: {search_context}"
                 )
                 
                 client = Groq(api_key=api_key)
