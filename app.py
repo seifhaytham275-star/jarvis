@@ -24,7 +24,7 @@ if 'mic_enabled' not in st.session_state:
 if 'arabic_mix' not in st.session_state:
     st.session_state.arabic_mix = False
 if 'model_name' not in st.session_state:
-    st.session_state.model_name = "llama3.1-8b"  # Default working model
+    st.session_state.model_name = "llama3.1-8b"
 if 'key_tested' not in st.session_state:
     st.session_state.key_tested = False
 
@@ -35,7 +35,6 @@ with st.sidebar:
     # ===== API KEYS SECTION =====
     st.subheader("🔑 API Keys")
     
-    # Cerebras API Key
     cerebras_key = st.text_input(
         "Cerebras API Key",
         type="password",
@@ -46,18 +45,17 @@ with st.sidebar:
     if cerebras_key:
         st.session_state.cerebras_api_key = cerebras_key
     
-    # Serper API Key
     serper_key = st.text_input(
         "Serper API Key",
         type="password",
         placeholder="Enter Serper API key...",
         value=st.session_state.serper_api_key,
-        help="Get your key from serper.dev (optional for web search)"
+        help="Get your key from serper.dev (optional)"
     )
     if serper_key:
         st.session_state.serper_api_key = serper_key
     
-    # Show API Key Status
+    # API Key Status
     if st.session_state.cerebras_api_key:
         st.success("✅ Cerebras API Key set")
     else:
@@ -73,21 +71,20 @@ with st.sidebar:
     # ===== MODEL SELECTION =====
     st.subheader("🧠 Model Selection")
     
-    # Verified working models from research
     model_options = [
-        "llama3.1-8b",        # ✅ Most reliable - widely available
-        "gpt-oss-120b",       # ✅ Good for reasoning tasks
-        "qwen-3-32b",         # ✅ Good for reasoning
-        "gemma-4-31b",        # ✅ Google's model - good for coding
-        "llama3-8b",          # ⚠️ Older version
-        "llama3.1-70b",       # ⚠️ Larger model - might need paid access
-        "llama3-70b",         # ⚠️ Larger model - might need paid access
+        "llama3.1-8b",
+        "gpt-oss-120b",
+        "qwen-3-32b",
+        "gemma-4-31b",
+        "llama3-8b",
+        "llama3.1-70b",
+        "llama3-70b",
     ]
     
     selected_model = st.selectbox(
         "Select Model",
         options=model_options,
-        index=0,  # Default to llama3.1-8b
+        index=0,
         help="Choose a model that works with your API key"
     )
     
@@ -97,7 +94,7 @@ with st.sidebar:
     
     st.divider()
     
-    # ===== FEATURES SECTION =====
+    # ===== FEATURES =====
     st.subheader("🎛️ Features")
     
     st.session_state.voice_enabled = st.toggle(
@@ -204,7 +201,7 @@ def get_available_models():
         return None
 
 def get_cerebras_response(prompt, web_results=None):
-    """Get response from Cerebras API - FULLY FIXED"""
+    """Get response from Cerebras API - FULLY FIXED WITH FREE TIER ERROR HANDLING"""
     if not st.session_state.cerebras_api_key:
         return "⚠️ Please enter your Cerebras API Key in the sidebar."
     
@@ -238,9 +235,9 @@ def get_cerebras_response(prompt, web_results=None):
     # Add current prompt
     messages.append({"role": "user", "content": full_prompt})
     
-    # ===== FIXED: Using the selected model from dropdown =====
+    # ===== USING SELECTED MODEL =====
     payload = {
-        "model": st.session_state.model_name,  # ← FIXED! Uses dropdown selection
+        "model": st.session_state.model_name,
         "messages": messages,
         "temperature": 0.7,
         "max_tokens": 1000,
@@ -256,10 +253,25 @@ def get_cerebras_response(prompt, web_results=None):
         else:
             error = response.json()
             error_msg = error.get("error", {}).get("message", str(response.text))
+            error_type = error.get("error", {}).get("type", "")
+            error_code = error.get("error", {}).get("code", "")
             
-            # Handle model not found error with helpful suggestions
-            if "model_not_found" in error_msg or "404" in str(response.status_code):
-                # Try to get available models
+            # ===== HANDLE PAYMENT REQUIRED ERROR - FREE TIER VERSION =====
+            if "payment_required" in error_type or "payment_required" in error_code:
+                return (
+                    "💳 **Payment Required?**\n\n"
+                    "This error may appear if you've reached your free tier limit. Here's how to fix it:\n\n"
+                    "**Steps to resolve:**\n"
+                    "1️⃣ Go to [cloud.cerebras.ai](https://cloud.cerebras.ai)\n"
+                    "2️⃣ Check your **Billing** dashboard to ensure you're on the **Free Plan** (not Pay-as-you-go)\n"
+                    "3️⃣ Wait for your daily free quota to reset (1M tokens per day)\n"
+                    "4️⃣ If you just upgraded from the Free plan, **generate a new API key**\n\n"
+                    "**Note:** Cerebras offers 1M free tokens per day - you don't need to add a payment method!\n\n"
+                    f"Error: {error_msg}"
+                )
+            
+            # ===== HANDLE MODEL NOT FOUND ERROR =====
+            elif "model_not_found" in error_type or "404" in str(response.status_code):
                 available = get_available_models()
                 if available:
                     models_list = "\n".join([f"  • `{m}`" for m in available[:10]])
@@ -268,9 +280,8 @@ def get_cerebras_response(prompt, web_results=None):
                         f"**Available models for your API key:**\n{models_list}\n\n"
                         f"**Fix:**\n"
                         f"1. Go to the sidebar\n"
-                        f"2. Select one of the available models from the dropdown\n"
-                        f"3. Or update the 'Model Selection' dropdown\n\n"
-                        f"**Error details:** {error_msg}"
+                        f"2. Select one of the available models from the dropdown\n\n"
+                        f"Error: {error_msg}"
                     )
                 else:
                     return (
@@ -278,8 +289,8 @@ def get_cerebras_response(prompt, web_results=None):
                         f"**Fix:**\n"
                         f"1. Go to the sidebar\n"
                         f"2. Try selecting a different model from the dropdown\n"
-                        f"3. Recommended models: `llama3.1-8b`, `gpt-oss-120b`, `qwen-3-32b`\n\n"
-                        f"**Error:** {error_msg}"
+                        f"3. Recommended: `llama3.1-8b`, `gpt-oss-120b`, `qwen-3-32b`\n\n"
+                        f"Error: {error_msg}"
                     )
             
             return f"❌ Error: {error_msg}"
@@ -321,9 +332,8 @@ if prompt := st.chat_input("Hold to Speak..." if st.session_state.mic_enabled el
             response = get_cerebras_response(prompt, web_results)
             st.markdown(response)
             
-            # Voice output placeholder
             if st.session_state.voice_enabled:
-                st.audio("", format="audio/wav")  # Placeholder for TTS
+                st.audio("", format="audio/wav")
     
     # Save assistant response
     st.session_state.messages.append({"role": "assistant", "content": response})
@@ -343,14 +353,16 @@ if st.session_state.cerebras_api_key and not st.session_state.key_tested:
     with st.sidebar:
         with st.status("🔍 Testing API Key...", expanded=False) as status:
             try:
-                # Test with a simple request
                 test_response = get_cerebras_response("Hello")
                 if "Error" not in test_response and "Model" not in test_response:
                     status.update(label="✅ API Key works!", state="complete")
                     st.success("✅ Connection successful!")
                 else:
                     status.update(label="⚠️ API Key issue", state="error")
-                    st.warning("⚠️ Check model selection")
+                    if "Payment" in test_response:
+                        st.warning("💳 Free tier limit reached - wait for reset")
+                    else:
+                        st.warning("⚠️ Check model selection")
                 st.session_state.key_tested = True
             except:
                 status.update(label="⚠️ Connection failed", state="error")
