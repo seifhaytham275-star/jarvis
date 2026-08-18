@@ -50,15 +50,17 @@ st.sidebar.title("⚡ Jarvis Core Control")
 st.sidebar.markdown("---")
 
 provider = st.sidebar.selectbox("Choose Intelligence Provider", ["Groq (Ultra-Fast)", "Perplexity (Web Search AI)"])
-api_key = st.sidebar.text_input("Enter API Key:", type="password", help="حط مفتاح الـ API الخاص بيك هنا لتفعيل القدرات الخارقة")
+api_key = st.sidebar.text_input("Enter API Key:", type="password", help="حط مفتاح الـ API الخاص بيك هنا")
 
-# اختيار الموديل الديناميكي
+# تثبيت أصح وأحدث الموديلات تلقائياً لمنع أي أخطاء كتابية
 if "Groq" in provider:
-    model = st.sidebar.text_input("Neural Model:", value="llama-3.1-8b-instant")
+    model = "llama-3.1-8b-instant"
     api_url = "https://api.groq.com/openai/v1/chat/completions"
+    st.sidebar.info(f"Active Neural Model: `{model}`")
 else:
-    model = st.sidebar.selectbox("Search Model:", ["sonar", "sonar-reasoning"])
+    model = "sonar"
     api_url = "https://api.perplexity.ai/chat/completions"
+    st.sidebar.info(f"Active Search Model: `{model}`")
 
 st.sidebar.markdown("---")
 if st.sidebar.button("🧹 Clear Mainframe Memory"):
@@ -86,7 +88,7 @@ if prompt := st.chat_input("اطرح أمرك على جارفيس..."):
 
     with st.chat_message("assistant"):
         if not api_key:
-            response = "⚠️ يا سيدي، يرجى إدخال الـ API Key في الشريط الجانبي لكي يتمكن جارفيس من الاتصال بالشبكة وعمل معالجة عقلية كاملة."
+            response = "⚠️ يا سيدي، يرجى إدخال الـ API Key الصحيح في الشريط الجانبي لكي يتمكن جارفيس من الاتصال بالشبكة."
             st.markdown(response)
         else:
             with st.spinner("جاري معالجة البيانات وتحليل البروتوكولات السيبرانية..."):
@@ -97,7 +99,7 @@ if prompt := st.chat_input("اطرح أمرك على جارفيس..."):
                 
                 # تجهيز رسائل السيستم مع الشات التاريخي
                 formatted_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-                for m in st.session_state.messages[-10:]: # آخر 10 رسائل للحفاظ على السياق
+                for m in st.session_state.messages[-10:]:
                     formatted_messages.append({"role": m["role"], "content": m["content"]})
                 
                 payload = {
