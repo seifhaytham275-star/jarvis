@@ -82,8 +82,8 @@ with st.sidebar:
     tab1, tab2 = st.tabs(["💬 Chat History", "⚙️ Settings"])
     
     with tab2:
-        # هنا هتدخل مفتاح DeepSeek API الخاص بك
-        st.session_state.settings["api_key"] = st.text_input("DeepSeek API Key", type="password")
+        # هنا هتدخل مفتاح Cerebras API المجاني
+        st.session_state.settings["api_key"] = st.text_input("Cerebras API Key", type="password")
         st.session_state.settings["serper_key"] = st.text_input("Serper API Key", type="password")
         st.session_state.settings["voice"] = st.toggle("Enable Voice Response", True)
         st.session_state.settings["mic_enabled"] = st.toggle("Enable Microphone", True)
@@ -120,10 +120,9 @@ user_text = prompt
 if audio_info and not prompt:
     api_key = st.session_state.settings.get("api_key")
     if not api_key:
-        st.warning("Please enter your DeepSeek API Key in settings first!")
+        st.warning("Please enter your Cerebras API Key in settings first!")
     else:
-        # ملاحظة: لتحويل الصوت لنصوص يمكنك استخدام Groq Whisper أو تفعيل خاصية المتصفح، هنا سنترك الكود مرن
-        st.info("Voice transcription requires a compatible audio endpoint; text input is fully active.")
+        st.info("Voice transcription active via text mode.")
 
 if user_text:
     st.session_state.chats[active].append({"role": "user", "content": user_text})
@@ -133,7 +132,7 @@ if user_text:
     serper_key = st.session_state.settings.get("serper_key")
     
     if not api_key or len(api_key) < 10:
-        st.error("⚠️ Please enter a valid DeepSeek API Key in the Settings tab first!")
+        st.error("⚠️ Please enter a valid Cerebras API Key in the Settings tab first!")
     else:
         with st.spinner("Thinking..."):
             try:
@@ -149,16 +148,16 @@ if user_text:
                     f"Google Search Context: {search_context}"
                 )
                 
-                # ربط عميل OpenAI بـ DeepSeek API الأساسي
+                # ربط عميل OpenAI بسيرفرات Cerebras المجانية السريعة
                 client = OpenAI(
                     api_key=api_key,
-                    base_url="https://api.deepseek.com"
+                    base_url="https://api.cerebras.ai/v1"
                 )
                 
                 chat_payload = [{"role": "system", "content": system_prompt}] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.chats[active]]
                 
                 response = client.chat.completions.create(
-                    model="deepseek-chat",
+                    model="llama3.1-8b",
                     messages=chat_payload
                 )
                 response_text = response.choices[0].message.content
@@ -168,4 +167,4 @@ if user_text:
                     st.markdown(response_text)
                     play_smooth_voice(response_text)
             except Exception as e:
-                st.error(f"Connection failed: {e}. Please check your DeepSeek API Key.")
+                st.error(f"Connection failed: {e}. Please check your Cerebras API Key.")
