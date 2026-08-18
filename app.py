@@ -161,7 +161,7 @@ if user_text:
                 
                 response = client.chat.completions.create(
                     messages=chat_payload,
-                    model="llama3-8b"
+                    model="llama-3.3-70b-versatile"
                 )
                 response_text = response.choices[0].message.content
                 
