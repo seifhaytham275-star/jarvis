@@ -24,23 +24,21 @@ if 'mic_enabled' not in st.session_state:
 if 'arabic_mix' not in st.session_state:
     st.session_state.arabic_mix = False
 if 'model_name' not in st.session_state:
-    st.session_state.model_name = "llama-3.3-70b-versatile"  # ✅ REPLACED with working model
+    st.session_state.model_name = "llama-3.1-8b-instant"
 if 'key_tested' not in st.session_state:
     st.session_state.key_tested = False
 
-# ===================== SIDEBAR - API KEYS & SETTINGS =====================
+# ===================== SIDEBAR =====================
 with st.sidebar:
     st.title("⚙️ Control Panel")
     
-    # ===== API KEYS SECTION =====
     st.subheader("🔑 API Keys")
-    
     groq_key = st.text_input(
         "Groq API Key",
         type="password",
         placeholder="gsk_...",
         value=st.session_state.groq_api_key,
-        help="Get your free key from console.groq.com - no credit card required!"
+        help="Get your free key from console.groq.com"
     )
     if groq_key:
         st.session_state.groq_api_key = groq_key
@@ -55,7 +53,6 @@ with st.sidebar:
     if serper_key:
         st.session_state.serper_api_key = serper_key
     
-    # API Key Status
     if st.session_state.groq_api_key:
         st.success("✅ Groq API Key set")
     else:
@@ -63,24 +60,20 @@ with st.sidebar:
     
     st.divider()
     
-    # ===== MODEL SELECTION =====
     st.subheader("🧠 Model Selection")
-    
-    # ✅ CURRENTLY AVAILABLE MODELS (verified Aug 2026)
     model_options = [
-        "llama-3.3-70b-versatile",   # ✅ REPLACEMENT for llama3-70b-8192 - 128K context
-        "llama-3.1-8b-instant",      # ✅ Fastest - replacement for llama3-8b-8192
-        "qwen3-32b",                 # ✅ Available on free tier
-        "gpt-oss-120b",              # ✅ 120B parameter model
-        "gpt-oss-20b",               # ✅ 20B parameter model
-        "llama-4-scout-17b-16e-instruct",  # ✅ Newer model with vision
+        "llama-3.1-8b-instant",
+        "llama-3.3-70b-versatile",
+        "llama-4-scout-17b-16e-instruct",
+        "qwen-3.2-32b",
+        "openai/gpt-oss-120b",
     ]
     
     selected_model = st.selectbox(
         "Select Model",
         options=model_options,
         index=0,
-        help="Choose a model that works with your API key"
+        help="'llama-3.1-8b-instant' works on all free accounts"
     )
     
     if selected_model:
@@ -89,47 +82,29 @@ with st.sidebar:
     
     st.divider()
     
-    # ===== FEATURES =====
     st.subheader("🎛️ Features")
-    
-    st.session_state.voice_enabled = st.toggle(
-        "🔊 Voice Response",
-        value=st.session_state.voice_enabled
-    )
-    
-    st.session_state.mic_enabled = st.toggle(
-        "🎤 Microphone",
-        value=st.session_state.mic_enabled
-    )
-    
-    st.session_state.arabic_mix = st.toggle(
-        "🌍 Mix Eloquent/Slang Arabic",
-        value=st.session_state.arabic_mix
-    )
+    st.session_state.voice_enabled = st.toggle("🔊 Voice Response", value=st.session_state.voice_enabled)
+    st.session_state.mic_enabled = st.toggle("🎤 Microphone", value=st.session_state.mic_enabled)
+    st.session_state.arabic_mix = st.toggle("🌍 Mix Eloquent/Slang Arabic", value=st.session_state.arabic_mix)
     
     st.divider()
     
-    # ===== CHAT HISTORY =====
     st.subheader("📜 Chat History")
     if st.session_state.messages:
-        for i, msg in enumerate(st.session_state.messages[-5:]):
+        for msg in st.session_state.messages[-5:]:
             if msg["role"] == "user":
                 st.caption(f"👤 {msg['content'][:25]}...")
-            else:
-                st.caption(f"🤖 {msg['content'][:25]}...")
     else:
         st.caption("No messages yet")
     
     st.divider()
     
-    # ===== ACTIONS =====
     col1, col2 = st.columns(2)
     with col1:
         if st.button("🗑️ Clear Chat", use_container_width=True):
             st.session_state.messages = []
             st.session_state.key_tested = False
             st.rerun()
-    
     with col2:
         if st.button("🔄 Reset All", use_container_width=True):
             st.session_state.messages = []
@@ -139,19 +114,15 @@ with st.sidebar:
             st.rerun()
     
     st.divider()
-    
-    # ===== STATUS =====
     st.caption(f"🟢 Status: {'Ready' if st.session_state.groq_api_key else 'No API Key'}")
     st.caption(f"📡 Model: {st.session_state.model_name}")
     st.caption(f"💬 Messages: {len(st.session_state.messages)}")
 
-# ===================== MAIN CHAT INTERFACE =====================
+# ===================== MAIN =====================
 st.title("🤖 J.A.R.V.I.S. Prime")
 st.caption("At your command, Sir...")
 
-# ===================== HELPER FUNCTIONS =====================
 def search_web(query):
-    """Search using Serper API"""
     if not st.session_state.serper_api_key:
         return None
     
@@ -174,43 +145,46 @@ def search_web(query):
         pass
     return None
 
+def get_available_models():
+    if not st.session_state.groq_api_key:
+        return None
+    
+    url = "https://api.groq.com/openai/v1/models"
+    headers = {"Authorization": f"Bearer {st.session_state.groq_api_key}"}
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            models = data.get("data", [])
+            return [m.get("id", "") for m in models]
+        return None
+    except:
+        return None
+
 def get_groq_response(prompt, web_results=None):
-    """Get response from Groq API - FULLY FIXED with current models"""
     if not st.session_state.groq_api_key:
         return "⚠️ Please enter your Groq API Key in the sidebar."
     
-    # Prepare the prompt with web results if available
     full_prompt = prompt
     if web_results:
         full_prompt = f"{prompt}\n\n🔍 Web Search Results:\n{web_results}"
     
-    # Groq API endpoint
     url = "https://api.groq.com/openai/v1/chat/completions"
-    
     headers = {
         "Authorization": f"Bearer {st.session_state.groq_api_key}",
         "Content-Type": "application/json"
     }
     
-    # Build system message
     system_msg = "You are J.A.R.V.I.S., Tony Stark's AI assistant. Be helpful, witty, and professional."
-    
     if st.session_state.arabic_mix:
         system_msg += " Mix eloquent Arabic with English and some slang Arabic when appropriate."
     
-    # Prepare messages
-    messages = [
-        {"role": "system", "content": system_msg}
-    ]
-    
-    # Add last 10 messages for context
+    messages = [{"role": "system", "content": system_msg}]
     for msg in st.session_state.messages[-10:]:
         messages.append(msg)
-    
-    # Add current prompt
     messages.append({"role": "user", "content": full_prompt})
     
-    # ===== USING CORRECT MODEL =====
     payload = {
         "model": st.session_state.model_name,
         "messages": messages,
@@ -229,7 +203,16 @@ def get_groq_response(prompt, web_results=None):
             error = response.json()
             error_msg = error.get("error", {}).get("message", str(response.text))
             
-            return f"❌ Error: {error_msg}"
+            available = get_available_models()
+            if available:
+                models_list = "\n".join([f"  • `{m}`" for m in available[:10]])
+                return (
+                    f"❌ Error: {error_msg}\n\n"
+                    f"**Available models for your API key:**\n{models_list}\n\n"
+                    f"**Fix:** Select a model from the dropdown that's in the list above."
+                )
+            else:
+                return f"❌ Error: {error_msg}\n\n**Fix:** Make sure your API key is valid and starts with 'gsk_'"
             
     except requests.exceptions.Timeout:
         return "⏰ Request timed out. Please try again."
@@ -238,19 +221,17 @@ def get_groq_response(prompt, web_results=None):
     except Exception as e:
         return f"❌ Unexpected error: {str(e)}"
 
-# ===================== DISPLAY CHAT HISTORY =====================
+# ===================== DISPLAY CHAT =====================
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
 # ===================== CHAT INPUT =====================
 if prompt := st.chat_input("Hold to Speak..." if st.session_state.mic_enabled else "Type your message..."):
-    # Add user message
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
     
-    # Check if web search is needed
     search_keywords = ["search", "google", "find", "look up", "what is", "who is"]
     web_results = None
     if any(keyword in prompt.lower() for keyword in search_keywords):
@@ -262,16 +243,13 @@ if prompt := st.chat_input("Hold to Speak..." if st.session_state.mic_enabled el
                 else:
                     status.update(label="⚠️ No search results", state="error")
     
-    # Get AI response
     with st.chat_message("assistant"):
         with st.spinner("🧠 Thinking..."):
             response = get_groq_response(prompt, web_results)
             st.markdown(response)
-            
             if st.session_state.voice_enabled:
                 st.audio("", format="audio/wav")
     
-    # Save assistant response
     st.session_state.messages.append({"role": "assistant", "content": response})
 
 # ===================== FOOTER =====================
@@ -284,7 +262,7 @@ with col2:
 with col3:
     st.caption(f"📝 {len(st.session_state.messages)} messages")
 
-# ===================== AUTO-TEST API KEY =====================
+# ===================== AUTO-TEST =====================
 if st.session_state.groq_api_key and not st.session_state.key_tested:
     with st.sidebar:
         with st.status("🔍 Testing API Key...", expanded=False) as status:
