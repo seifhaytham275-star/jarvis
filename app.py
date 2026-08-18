@@ -13,8 +13,8 @@ st.set_page_config(
 # ===================== SESSION STATE =====================
 if 'messages' not in st.session_state:
     st.session_state.messages = []
-if 'cerebras_api_key' not in st.session_state:
-    st.session_state.cerebras_api_key = ""
+if 'sambanova_api_key' not in st.session_state:
+    st.session_state.sambanova_api_key = ""
 if 'serper_api_key' not in st.session_state:
     st.session_state.serper_api_key = ""
 if 'voice_enabled' not in st.session_state:
@@ -24,7 +24,7 @@ if 'mic_enabled' not in st.session_state:
 if 'arabic_mix' not in st.session_state:
     st.session_state.arabic_mix = False
 if 'model_name' not in st.session_state:
-    st.session_state.model_name = "llama3.1-8b"
+    st.session_state.model_name = "Meta-Llama-3.3-70B-Instruct"
 if 'key_tested' not in st.session_state:
     st.session_state.key_tested = False
 
@@ -35,15 +35,15 @@ with st.sidebar:
     # ===== API KEYS SECTION =====
     st.subheader("🔑 API Keys")
     
-    cerebras_key = st.text_input(
-        "Cerebras API Key",
+    sambanova_key = st.text_input(
+        "SambaNova API Key",
         type="password",
-        placeholder="csk-...",
-        value=st.session_state.cerebras_api_key,
-        help="Get your key from cloud.cerebras.ai"
+        placeholder="Enter your SambaNova API key...",
+        value=st.session_state.sambanova_api_key,
+        help="Get your key from cloud.sambanova.ai"
     )
-    if cerebras_key:
-        st.session_state.cerebras_api_key = cerebras_key
+    if sambanova_key:
+        st.session_state.sambanova_api_key = sambanova_key
     
     serper_key = st.text_input(
         "Serper API Key",
@@ -56,10 +56,10 @@ with st.sidebar:
         st.session_state.serper_api_key = serper_key
     
     # API Key Status
-    if st.session_state.cerebras_api_key:
-        st.success("✅ Cerebras API Key set")
+    if st.session_state.sambanova_api_key:
+        st.success("✅ SambaNova API Key set")
     else:
-        st.warning("⚠️ Cerebras API Key required")
+        st.warning("⚠️ SambaNova API Key required")
     
     if st.session_state.serper_api_key:
         st.success("✅ Serper API Key set")
@@ -72,13 +72,12 @@ with st.sidebar:
     st.subheader("🧠 Model Selection")
     
     model_options = [
-        "llama3.1-8b",
-        "gpt-oss-120b",
-        "qwen-3-32b",
-        "gemma-4-31b",
-        "llama3-8b",
-        "llama3.1-70b",
-        "llama3-70b",
+        "Meta-Llama-3.3-70B-Instruct",  # ✅ Best free model, 240 RPM [citation:1]
+        "gpt-oss-120b",                 # ✅ Good for reasoning [citation:11]
+        "MiniMax-M2.7",                 # ✅ Fast and cheap [citation:11]
+        "DeepSeek-V3.1",                # ✅ Another option [citation:1]
+        "gemma-4-31B-it",               # ✅ Google model [citation:1]
+        "Llama-4-Maverick-17B-128E-Instruct",  # ✅ Newer model [citation:6]
     ]
     
     selected_model = st.selectbox(
@@ -138,7 +137,7 @@ with st.sidebar:
     with col2:
         if st.button("🔄 Reset All", use_container_width=True):
             st.session_state.messages = []
-            st.session_state.cerebras_api_key = ""
+            st.session_state.sambanova_api_key = ""
             st.session_state.serper_api_key = ""
             st.session_state.key_tested = False
             st.rerun()
@@ -146,7 +145,7 @@ with st.sidebar:
     st.divider()
     
     # ===== STATUS =====
-    st.caption(f"🟢 Status: {'Ready' if st.session_state.cerebras_api_key else 'No API Key'}")
+    st.caption(f"🟢 Status: {'Ready' if st.session_state.sambanova_api_key else 'No API Key'}")
     st.caption(f"📡 Model: {st.session_state.model_name}")
     st.caption(f"💬 Messages: {len(st.session_state.messages)}")
 
@@ -180,13 +179,13 @@ def search_web(query):
     return None
 
 def get_available_models():
-    """Query Cerebras API to see which models are available"""
-    if not st.session_state.cerebras_api_key:
+    """Query SambaNova API to see which models are available"""
+    if not st.session_state.sambanova_api_key:
         return None
     
-    url = "https://api.cerebras.ai/v1/models"
+    url = "https://api.sambanova.ai/v1/models"
     headers = {
-        "Authorization": f"Bearer {st.session_state.cerebras_api_key}"
+        "Authorization": f"Bearer {st.session_state.sambanova_api_key}"
     }
     
     try:
@@ -200,20 +199,21 @@ def get_available_models():
     except:
         return None
 
-def get_cerebras_response(prompt, web_results=None):
-    """Get response from Cerebras API - FULLY FIXED WITH FREE TIER ERROR HANDLING"""
-    if not st.session_state.cerebras_api_key:
-        return "⚠️ Please enter your Cerebras API Key in the sidebar."
+def get_sambanova_response(prompt, web_results=None):
+    """Get response from SambaNova API"""
+    if not st.session_state.sambanova_api_key:
+        return "⚠️ Please enter your SambaNova API Key in the sidebar."
     
     # Prepare the prompt with web results if available
     full_prompt = prompt
     if web_results:
         full_prompt = f"{prompt}\n\n🔍 Web Search Results:\n{web_results}"
     
-    url = "https://api.cerebras.ai/v1/chat/completions"
+    # SambaNova API endpoint [citation:3]
+    url = "https://api.sambanova.ai/v1/chat/completions"
     
     headers = {
-        "Authorization": f"Bearer {st.session_state.cerebras_api_key}",
+        "Authorization": f"Bearer {st.session_state.sambanova_api_key}",
         "Content-Type": "application/json"
     }
     
@@ -256,17 +256,18 @@ def get_cerebras_response(prompt, web_results=None):
             error_type = error.get("error", {}).get("type", "")
             error_code = error.get("error", {}).get("code", "")
             
-            # ===== HANDLE PAYMENT REQUIRED ERROR - FREE TIER VERSION =====
-            if "payment_required" in error_type or "payment_required" in error_code:
+            # ===== HANDLE RATE LIMIT ERROR =====
+            if "rate" in error_type.lower() or "rate" in error_code.lower():
                 return (
-                    "💳 **Payment Required?**\n\n"
-                    "This error may appear if you've reached your free tier limit. Here's how to fix it:\n\n"
-                    "**Steps to resolve:**\n"
-                    "1️⃣ Go to [cloud.cerebras.ai](https://cloud.cerebras.ai)\n"
-                    "2️⃣ Check your **Billing** dashboard to ensure you're on the **Free Plan** (not Pay-as-you-go)\n"
-                    "3️⃣ Wait for your daily free quota to reset (1M tokens per day)\n"
-                    "4️⃣ If you just upgraded from the Free plan, **generate a new API key**\n\n"
-                    "**Note:** Cerebras offers 1M free tokens per day - you don't need to add a payment method!\n\n"
+                    "⏰ **Rate Limit Reached**\n\n"
+                    "SambaNova has rate limits to ensure stable service.\n\n"
+                    f"**Your current rate limits:**\n"
+                    f"• **Meta-Llama-3.3-70B**: 240 RPM, 48,000 RPD [citation:1]\n"
+                    f"• **Other models**: 60 RPM, 12,000 RPD [citation:1]\n\n"
+                    "**What to do:**\n"
+                    "1️⃣ Wait a few minutes and try again\n"
+                    "2️⃣ Try a different model from the dropdown\n"
+                    "3️⃣ SambaNova offers unlimited requests (rate-limited) [citation:12]\n\n"
                     f"Error: {error_msg}"
                 )
             
@@ -289,7 +290,7 @@ def get_cerebras_response(prompt, web_results=None):
                         f"**Fix:**\n"
                         f"1. Go to the sidebar\n"
                         f"2. Try selecting a different model from the dropdown\n"
-                        f"3. Recommended: `llama3.1-8b`, `gpt-oss-120b`, `qwen-3-32b`\n\n"
+                        f"3. Recommended: `Meta-Llama-3.3-70B-Instruct`, `gpt-oss-120b`, `MiniMax-M2.7`\n\n"
                         f"Error: {error_msg}"
                     )
             
@@ -329,7 +330,7 @@ if prompt := st.chat_input("Hold to Speak..." if st.session_state.mic_enabled el
     # Get AI response
     with st.chat_message("assistant"):
         with st.spinner("🧠 Thinking..."):
-            response = get_cerebras_response(prompt, web_results)
+            response = get_sambanova_response(prompt, web_results)
             st.markdown(response)
             
             if st.session_state.voice_enabled:
@@ -342,27 +343,24 @@ if prompt := st.chat_input("Hold to Speak..." if st.session_state.mic_enabled el
 st.divider()
 col1, col2, col3 = st.columns(3)
 with col1:
-    st.caption("⚡ Powered by Cerebras AI")
+    st.caption("⚡ Powered by SambaNova")
 with col2:
     st.caption("🔧 Built with Streamlit")
 with col3:
     st.caption(f"📝 {len(st.session_state.messages)} messages")
 
 # ===================== AUTO-TEST API KEY =====================
-if st.session_state.cerebras_api_key and not st.session_state.key_tested:
+if st.session_state.sambanova_api_key and not st.session_state.key_tested:
     with st.sidebar:
         with st.status("🔍 Testing API Key...", expanded=False) as status:
             try:
-                test_response = get_cerebras_response("Hello")
+                test_response = get_sambanova_response("Hello")
                 if "Error" not in test_response and "Model" not in test_response:
                     status.update(label="✅ API Key works!", state="complete")
                     st.success("✅ Connection successful!")
                 else:
                     status.update(label="⚠️ API Key issue", state="error")
-                    if "Payment" in test_response:
-                        st.warning("💳 Free tier limit reached - wait for reset")
-                    else:
-                        st.warning("⚠️ Check model selection")
+                    st.warning("⚠️ Check model selection")
                 st.session_state.key_tested = True
             except:
                 status.update(label="⚠️ Connection failed", state="error")
