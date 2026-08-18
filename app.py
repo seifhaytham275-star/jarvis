@@ -35,7 +35,6 @@ def search_web_serper(query, serper_key):
         if response.status_code == 200:
             data = response.json()
             snippets = []
-            # جمع الـ Organic Results
             for item in data.get("organic", [])[:3]:
                 title = item.get("title", "")
                 snippet = item.get("snippet", "")
@@ -149,7 +148,6 @@ if user_text:
                 if any(kw in lower_text for kw in ["يوتيوب", "youtube", "تشغيل", "فيديو", "watch", "play", "مروان"]):
                     open_youtube_search(user_text)
 
-                # تنفيذ البحث الاحترافي عبر Serper
                 search_context = search_web_serper(user_text, serper_key)
                 
                 system_prompt = (
@@ -163,7 +161,7 @@ if user_text:
                 
                 response = client.chat.completions.create(
                     messages=chat_payload,
-                    model="llama-3.3-70b-versatile"
+                    model="llama-3.1-8b-instant"
                 )
                 response_text = response.choices[0].message.content
                 
