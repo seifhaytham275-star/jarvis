@@ -159,9 +159,10 @@ if user_text:
                 client = Groq(api_key=api_key)
                 chat_payload = [{"role": "system", "content": system_prompt}] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.chats[active]]
                 
+                # استخدام الموديل الأسرع والأكثر توافقاً مع المفاتيح المجانية الجديدة
                 response = client.chat.completions.create(
                     messages=chat_payload,
-                    model="llama-3.3-70b-versatile"
+                    model="llama-3.1-8b-instant"
                 )
                 response_text = response.choices[0].message.content
                 
