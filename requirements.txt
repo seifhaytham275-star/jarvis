@@ -1,9 +1,5 @@
 streamlit
 groq
-streamlit-mic-recorder
 requests
-
-
-
-
-
+streamlit-mic-recorder
+openai
