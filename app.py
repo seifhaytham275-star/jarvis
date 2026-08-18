@@ -1,4 +1,3 @@
-import os
 import streamlit as st
 import requests
 import json
@@ -24,6 +23,10 @@ if 'mic_enabled' not in st.session_state:
     st.session_state.mic_enabled = False
 if 'arabic_mix' not in st.session_state:
     st.session_state.arabic_mix = False
+if 'model_name' not in st.session_state:
+    st.session_state.model_name = "llama3.1-8b"  # Default working model
+if 'key_tested' not in st.session_state:
+    st.session_state.key_tested = False
 
 # ===================== SIDEBAR - API KEYS & SETTINGS =====================
 with st.sidebar:
@@ -49,7 +52,7 @@ with st.sidebar:
         type="password",
         placeholder="Enter Serper API key...",
         value=st.session_state.serper_api_key,
-        help="Get your key from serper.dev"
+        help="Get your key from serper.dev (optional for web search)"
     )
     if serper_key:
         st.session_state.serper_api_key = serper_key
@@ -64,6 +67,33 @@ with st.sidebar:
         st.success("✅ Serper API Key set")
     else:
         st.info("ℹ️ Serper API Key optional (for web search)")
+    
+    st.divider()
+    
+    # ===== MODEL SELECTION =====
+    st.subheader("🧠 Model Selection")
+    
+    # Verified working models from research
+    model_options = [
+        "llama3.1-8b",        # ✅ Most reliable - widely available
+        "gpt-oss-120b",       # ✅ Good for reasoning tasks
+        "qwen-3-32b",         # ✅ Good for reasoning
+        "gemma-4-31b",        # ✅ Google's model - good for coding
+        "llama3-8b",          # ⚠️ Older version
+        "llama3.1-70b",       # ⚠️ Larger model - might need paid access
+        "llama3-70b",         # ⚠️ Larger model - might need paid access
+    ]
+    
+    selected_model = st.selectbox(
+        "Select Model",
+        options=model_options,
+        index=0,  # Default to llama3.1-8b
+        help="Choose a model that works with your API key"
+    )
+    
+    if selected_model:
+        st.session_state.model_name = selected_model
+        st.info(f"🧠 Using: {selected_model}")
     
     st.divider()
     
@@ -105,19 +135,23 @@ with st.sidebar:
     with col1:
         if st.button("🗑️ Clear Chat", use_container_width=True):
             st.session_state.messages = []
+            st.session_state.key_tested = False
             st.rerun()
     
     with col2:
-        if st.button("🔄 Reset", use_container_width=True):
+        if st.button("🔄 Reset All", use_container_width=True):
             st.session_state.messages = []
             st.session_state.cerebras_api_key = ""
             st.session_state.serper_api_key = ""
+            st.session_state.key_tested = False
             st.rerun()
     
     st.divider()
     
     # ===== STATUS =====
     st.caption(f"🟢 Status: {'Ready' if st.session_state.cerebras_api_key else 'No API Key'}")
+    st.caption(f"📡 Model: {st.session_state.model_name}")
+    st.caption(f"💬 Messages: {len(st.session_state.messages)}")
 
 # ===================== MAIN CHAT INTERFACE =====================
 st.title("🤖 J.A.R.V.I.S. Prime")
@@ -148,8 +182,29 @@ def search_web(query):
         pass
     return None
 
+def get_available_models():
+    """Query Cerebras API to see which models are available"""
+    if not st.session_state.cerebras_api_key:
+        return None
+    
+    url = "https://api.cerebras.ai/v1/models"
+    headers = {
+        "Authorization": f"Bearer {st.session_state.cerebras_api_key}"
+    }
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            models = data.get("data", [])
+            model_names = [m.get("id", "") for m in models]
+            return model_names
+        return None
+    except:
+        return None
+
 def get_cerebras_response(prompt, web_results=None):
-    """Get response from Cerebras API"""
+    """Get response from Cerebras API - FULLY FIXED"""
     if not st.session_state.cerebras_api_key:
         return "⚠️ Please enter your Cerebras API Key in the sidebar."
     
@@ -183,10 +238,9 @@ def get_cerebras_response(prompt, web_results=None):
     # Add current prompt
     messages.append({"role": "user", "content": full_prompt})
     
-    # ===== FIX: Use correct model name =====
-    # OPTIONS: "llama3.1-8b", "llama3.1-70b", "llama3-8b", "llama3-70b"
+    # ===== FIXED: Using the selected model from dropdown =====
     payload = {
-        "model": "llama3.1-8b",  # ← CHANGE THIS if needed
+        "model": st.session_state.model_name,  # ← FIXED! Uses dropdown selection
         "messages": messages,
         "temperature": 0.7,
         "max_tokens": 1000,
@@ -203,17 +257,30 @@ def get_cerebras_response(prompt, web_results=None):
             error = response.json()
             error_msg = error.get("error", {}).get("message", str(response.text))
             
-            # Handle model not found error
+            # Handle model not found error with helpful suggestions
             if "model_not_found" in error_msg or "404" in str(response.status_code):
-                return (
-                    "❌ **Model Not Found Error**\n\n"
-                    "The model 'llama3.1-8b' is not available.\n\n"
-                    "**Fix:**\n"
-                    "1. Go to cloud.cerebras.ai to see your available models\n"
-                    "2. Change the 'model' name in the code (line ~107)\n"
-                    "3. Try: 'llama3-8b', 'llama3.1-70b', or 'llama3-70b'\n\n"
-                    f"Error: {error_msg}"
-                )
+                # Try to get available models
+                available = get_available_models()
+                if available:
+                    models_list = "\n".join([f"  • `{m}`" for m in available[:10]])
+                    return (
+                        f"❌ **Model '{st.session_state.model_name}' not found.**\n\n"
+                        f"**Available models for your API key:**\n{models_list}\n\n"
+                        f"**Fix:**\n"
+                        f"1. Go to the sidebar\n"
+                        f"2. Select one of the available models from the dropdown\n"
+                        f"3. Or update the 'Model Selection' dropdown\n\n"
+                        f"**Error details:** {error_msg}"
+                    )
+                else:
+                    return (
+                        f"❌ **Model '{st.session_state.model_name}' not found.**\n\n"
+                        f"**Fix:**\n"
+                        f"1. Go to the sidebar\n"
+                        f"2. Try selecting a different model from the dropdown\n"
+                        f"3. Recommended models: `llama3.1-8b`, `gpt-oss-120b`, `qwen-3-32b`\n\n"
+                        f"**Error:** {error_msg}"
+                    )
             
             return f"❌ Error: {error_msg}"
             
@@ -272,12 +339,19 @@ with col3:
     st.caption(f"📝 {len(st.session_state.messages)} messages")
 
 # ===================== AUTO-TEST API KEY =====================
-if st.session_state.cerebras_api_key and "key_tested" not in st.session_state:
+if st.session_state.cerebras_api_key and not st.session_state.key_tested:
     with st.sidebar:
-        with st.status("🔍 Testing API Key...", expanded=False):
-            test_response = get_cerebras_response("Hello")
-            if "Error" not in test_response and "Model" not in test_response:
-                st.success("✅ API Key works!")
-            else:
-                st.error("⚠️ API Key issue - check model name")
-            st.session_state.key_tested = True
+        with st.status("🔍 Testing API Key...", expanded=False) as status:
+            try:
+                # Test with a simple request
+                test_response = get_cerebras_response("Hello")
+                if "Error" not in test_response and "Model" not in test_response:
+                    status.update(label="✅ API Key works!", state="complete")
+                    st.success("✅ Connection successful!")
+                else:
+                    status.update(label="⚠️ API Key issue", state="error")
+                    st.warning("⚠️ Check model selection")
+                st.session_state.key_tested = True
+            except:
+                status.update(label="⚠️ Connection failed", state="error")
+                st.session_state.key_tested = True
