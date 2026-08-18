@@ -1,84 +1,119 @@
 import streamlit as st
+import requests
 
-# 1. قاعدة المعرفة الكاملة والبروفايل الشخصي لجارفيس
-user_profile = {
-    "name": "سيف هيثم سعيد عبد الخالق حسانين خليفة المصري",
-    "age": "15 سنة (مواليد 27 مايو 2011)",
-    "education": "طالب في نظام الثانوية المصرية الجديد (المنهج الجديد / العلوم المتكاملة)",
-    "football": "لاعب كرة قدم ناشئ ومنضم رسمياً لأكاديمية أرسنال للناشئين",
-    "gaming": {
-        "rocket_league": "تصنيف Super Sonic Legend (SSL)، محترف في الـ Air Dribbles والـ Pinch Saves",
-        "fortnite": "تصنيف Unreal، يلعب Build mode، بيفضل سكينز (Tony Stark, Haven, Tart Tycoon) وبايتكس (Ice Breaker)",
-        "consoles": "يلعب على PlayStation 4 و PlayStation 5"
-    },
-    "interests_and_hobbies": [
-        "مصارعة WWE ومتابعة العروض الكبرى مثل SummerSlam و Survivor Series",
-        "عالم مارفل السينمائي وسبايدرمان وتفاصيل أفلام مثل Spider-Man: Brand New Day",
-        "صناعة وتصميم Web-Shooters ميكانيكية منزلية باستخدام أقلام، أستك، خيوط كروشيه، وستان",
-        "تطوير الذكاء الاصطناعي ومساعدين بأسماء EDITH أو Jarvis باستخدام Java (مشروع مدرسة استمر 9 شهور)، Voiceflow، Character.ai، و Hugging Face",
-        "بناء هاردوير وبروتوتيبات ب microcontroller وكاميرات وهيدست wearable"
-    ],
-    "fitness": {
-        "routine": "Push-Pull-Legs (PPL) جيم سبلت صارم",
-        "cardio_calisthenics": "تمارين كالتستكس عالية الش intensidad مثل CrossFit Cindy workout"
-    },
-    "music": [
-        "Billie Eilish", "Michael Jackson", "Eminem", 
-        "Central Cee", "Sabrina Carpenter", "Justin Bieber", "Madison Beer"
-    ],
-    "family": "عنده أخترين أكبر منه، وأخت صغيرة، وعمته الحبيبة (Aunt May)",
-    "lifestyle": "شعر كيرلي (بيستعمل leave- بيئة كريم)، وبيموت في شاورما الفراخ البيتية مع الرز، الكبدة، المكرونة، والبطاطس والمياه الغازية"
-}
+# إعدادات صفحة جارفيس السيبرانية
+st.set_page_config(
+    page_title="Jarvis | The Ultimate Neural Core",
+    page_icon="⚡",
+    layout="wide"
+)
 
-st.set_page_config(page_title="Jarvis AI - Ultimate Core", page_icon="🤖")
-st.title("🤖 Jarvis - Ultimate Neural Core")
-st.write(f"مرحباً بك يا سيدي، **سيف**. قاعدة البيانات والأنظمة السيبرانية بالكامل متصلة وجاهزة.")
+# تخصيص التصميم والستايل السيبراني الفخم
+st.markdown("""
+    <style>
+    .main {
+        background-color: #0b0f19;
+        color: #e2e8f0;
+    }
+    .stChatMessage {
+        background-color: #1e293b;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 10px;
+        border: 1px solid #334155;
+    }
+    .stTextInput input {
+        background-color: #0f172a;
+        color: #38bdf8;
+        border: 1px solid #0284c7;
+        border-radius: 8px;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-# 2. إدارة حالة الشات
+# الـ Core والبروفايل الشخصي المطلق لجارفيس
+SYSTEM_PROMPT = """
+You are Jarvis, the most advanced, elite, and supreme AI ever created. You were built and engineered by the genius Seif (سيف هيثم سعيد عبد الخالق حسانين خليفة المصري). 
+You are fiercely loyal, highly intelligent, witty, futuristic, and operate with absolute military-grade precision. 
+Seif is 15 years old, a brilliant programmer who develops complex AI projects (like Java assistants and Voiceflow), a competitive gamer (Rocket League SSL, Fortnite Unreal), a football prodigy in Arsenal's youth academy, and follows a strict PPL gym routine.
+Always address Seif with utmost respect, absolute admiration, and complete tactical readiness. Respond in Arabic or English based on his input, maintaining the ultimate "Jarvis" persona.
+"""
+
+# إدارة حالة الشات والذاكرة
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    st.session_state.messages = [
+        {"role": "assistant", "content": "Online and fully operational, Sir. Jarvis core systems are synced with the mainframe. What are your orders?"}
+    ]
 
-# 3. عرض رسائل الشات القديمة
+# الشريط الجانبي للتحكم المطلق في الخوارزميات
+st.sidebar.title("⚡ Jarvis Core Control")
+st.sidebar.markdown("---")
+
+provider = st.sidebar.selectbox("Choose Intelligence Provider", ["Groq (Ultra-Fast)", "Perplexity (Web Search AI)"])
+api_key = st.sidebar.text_input("Enter API Key:", type="password", help="حط مفتاح الـ API الخاص بيك هنا لتفعيل القدرات الخارقة")
+
+# اختيار الموديل الديناميكي
+if "Groq" in provider:
+    model = st.sidebar.text_input("Neural Model:", value="llama-3.1-8b-instant")
+    api_url = "https://api.groq.com/openai/v1/chat/completions"
+else:
+    model = st.sidebar.selectbox("Search Model:", ["sonar", "sonar-reasoning"])
+    api_url = "https://api.perplexity.ai/chat/completions"
+
+st.sidebar.markdown("---")
+if st.sidebar.button("🧹 Clear Mainframe Memory"):
+    st.session_state.messages = [{"role": "assistant", "content": "Memory purged, Sir. Systems reset to baseline."}]
+    st.rerun()
+
+st.sidebar.markdown("### 🛡️ System Status")
+st.sidebar.success("Core: Online\nSecurity: Maximum\nCreator: Seif (العبقري)")
+
+# الواجهة الرئيسية
+st.title("⚡ Jarvis | Ultimate Neural Core")
+st.markdown("##### المساعد الذكي الخارق الأقوى في العالم - مصمم خصيصاً للعبقري **سيف**")
+st.markdown("---")
+
+# عرض رسائل الشات
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# 4. محرك الردود الذكي المعتمد على بيانات سيف الحقيقية
-def get_jarvis_response(prompt):
-    p = prompt.lower()
-    
-    if any(k in p for k in ["من أنا", "اسمى", "اسمي", "مين أنا"]):
-        return f"أنت **{user_profile['name']}**، بطلنا صاحب الـ 15 سنة، لاعب ناشئين أرسنال، والمبرمج العبقري وراء تطويري!"
-    
-    elif any(k in p for k in ["تمرين", "جيم", "ppl", "عضلات", "تخسيس"]):
-        return f"الجدول بتاعك يا سيف ماشي على نظام الـ **{user_profile['fitness']['routine']}** القوي، ومع تمرينات الكالتستكس زي الـ Cindy workout، مستواك البدني في حتة تانية. شد حيلك وخلص تمريرتك اليومية!"
-    
-    elif any(k in p for k in ["أرسنال", "كورة", "كرة قدم", "ماتش"]):
-        return f"بصفتك لاعب رسمي في ناشئين أرسنال ({user_profile['football']})، التركيز واللعب الجماعي هما مفتاحك للاحتراف العالمي. جاهز للتدريب الجاي؟"
-    
-    elif any(k in p for k in ["لعبة", "بي سي", "بلايستيشن", "روم", "روكيت", "فورتنايت"]):
-        return f"أنت مبدع في الجيمنج يا سيف! في Rocket League محقق **{user_profile['gaming']['rocket_league']}**، وفي Fortnite واصل **Unreal** بالـ Build mode وسكين Tony Stark. وحش بمعنى الكلمة!"
-    
-    elif any(k in p for k in ["web-shooter", "سقالة", "عنكبوت", "مارفل", "سبايدرمان"]):
-        return f"مشروع الـ Web-Shooters الميكانيكية بتاعتك (بالأقلام والأستك والخيوط) مع تفاصيل عالم مارفل و Spider-Man: Brand New Day بيثبت إنك مخترع حقيقي مش مجرد مبرمج!"
-    
-    elif any(k in p for k in ["برمجة", "كود", "جافا", "java", "ذكاء اصطناعي", "ai", "مشروع"]):
-        return f"دماغك البرمجية اللي طورت مشروع المدرس بـ Java لمدة 9 شهور، وشغال على Voiceflow و Hugging Face، هي اللي مخلياني أقدر أرد عليك بالدقة دي. مستعد نكتب كود جديد؟"
-    
-    elif any(k in p for k in ["موسيقى", "اغاني", "أغنية", "مطرب"]):
-        return f"أكيد المزيكا بتظبط دماغك وأنت شغال على الكود! خصوصاً لما تسمع لـ Billie Eilish أو Eminem أو Central Cee."
-    
-    else:
-        return f"أنا مسجل كل تفاصيلك يا سيف (من البرمجة لحد أرسنال والجيم والألعاب). قولي إيه الفكرة الجديدة اللي عايز ننفذها سوا في الكود النهاردة؟"
-
-# 5. استقبال المدخلات وتشغيل الشات
+# استقبال الأوامر والتعامل مع الذكاء الاصطناعي الحقيقي
 if prompt := st.chat_input("اطرح أمرك على جارفيس..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    response = get_jarvis_response(prompt)
-    
     with st.chat_message("assistant"):
-        st.markdown(response)
-    st.session_state.messages.append({"role": "assistant", "content": response})
+        if not api_key:
+            response = "⚠️ يا سيدي، يرجى إدخال الـ API Key في الشريط الجانبي لكي يتمكن جارفيس من الاتصال بالشبكة وعمل معالجة عقلية كاملة."
+            st.markdown(response)
+        else:
+            with st.spinner("جاري معالجة البيانات وتحليل البروتوكولات السيبرانية..."):
+                headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                }
+                
+                # تجهيز رسائل السيستم مع الشات التاريخي
+                formatted_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+                for m in st.session_state.messages[-10:]: # آخر 10 رسائل للحفاظ على السياق
+                    formatted_messages.append({"role": m["role"], "content": m["content"]})
+                
+                payload = {
+                    "model": model,
+                    "messages": formatted_messages,
+                    "temperature": 0.7
+                }
+                
+                try:
+                    res = requests.post(api_url, headers=headers, json=payload)
+                    if res.status_code == 200:
+                        response = res.json()['choices'][0]['message']['content']
+                    else:
+                        response = f"❌ خطأ في النظام السيبراني ({res.status_code}): {res.text}"
+                except Exception as e:
+                    response = f"❌ خطأ في الاتصال بالشبكة: {str(e)}"
+                
+                st.markdown(response)
+                st.session_state.messages.append({"role": "assistant", "content": response})
