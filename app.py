@@ -1,121 +1,54 @@
 import streamlit as st
 import requests
 
-# إعدادات صفحة جارفيس السيبرانية
-st.set_page_config(
-    page_title="Jarvis | The Ultimate Neural Core",
-    page_icon="⚡",
-    layout="wide"
-)
+# إعدادات الواجهة
+st.set_page_config(page_title="Jarvis | Core", page_icon="⚡")
 
-# تخصيص التصميم والستايل السيبراني الفخم
+# الستايل السيبراني
 st.markdown("""
     <style>
-    .main {
-        background-color: #0b0f19;
-        color: #e2e8f0;
-    }
-    .stChatMessage {
-        background-color: #1e293b;
-        border-radius: 12px;
-        padding: 15px;
-        margin-bottom: 10px;
-        border: 1px solid #334155;
-    }
-    .stTextInput input {
-        background-color: #0f172a;
-        color: #38bdf8;
-        border: 1px solid #0284c7;
-        border-radius: 8px;
-    }
+    .stApp { background-color: #0b0f19; }
+    .stChatMessage { background-color: #1e293b; color: white; border-radius: 10px; }
     </style>
 """, unsafe_allow_html=True)
 
-# الـ Core والبروفايل الشخصي المطلق لجارفيس
+# الشخصية (System Prompt)
 SYSTEM_PROMPT = """
-You are Jarvis, the most advanced, elite, and supreme AI ever created. You were built and engineered by the genius Seif (سيف هيثم سعيد عبد الخالق حسانين خليفة المصري). 
-You are fiercely loyal, highly intelligent, witty, futuristic, and operate with absolute military-grade precision. 
-Seif is 15 years old, a brilliant programmer who develops complex AI projects (like Java assistants and Voiceflow), a competitive gamer (Rocket League SSL, Fortnite Unreal), a football prodigy in Arsenal's youth academy, and follows a strict PPL gym routine.
-Always address Seif with utmost respect, absolute admiration, and complete tactical readiness. Respond in Arabic or English based on his input, maintaining the ultimate "Jarvis" persona.
+You are Jarvis, the elite AI assistant built by Seif (سيف هيثم سعيد عبد الخالق حسانين خليفة المصري). 
+You are intelligent, loyal, and precise. Seif is 15, a brilliant programmer and gamer. 
+Always be professional, witty, and ready to assist him with his code and projects.
 """
 
-# إدارة حالة الشات والذاكرة
+# إدارة الشات
 if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "assistant", "content": "Online and fully operational, Sir. Jarvis core systems are synced with the mainframe. What are your orders?"}
-    ]
+    st.session_state.messages = []
 
-# الشريط الجانبي للتحكم المطلق في الخوارزميات
-st.sidebar.title("⚡ Jarvis Core Control")
-st.sidebar.markdown("---")
+# الشريط الجانبي
+api_key = st.sidebar.text_input("API Key", type="password")
+model = st.sidebar.selectbox("Model", ["llama-3.1-8b-instant", "llama3-70b-8192"])
 
-provider = st.sidebar.selectbox("Choose Intelligence Provider", ["Groq (Ultra-Fast)", "Perplexity (Web Search AI)"])
-api_key = st.sidebar.text_input("Enter API Key:", type="password", help="حط مفتاح الـ API الخاص بيك هنا")
-
-# تثبيت أصح وأحدث الموديلات تلقائياً لمنع أي أخطاء كتابية
-if "Groq" in provider:
-    model = "llama-3.1-8b-instant"
-    api_url = "https://api.groq.com/openai/v1/chat/completions"
-    st.sidebar.info(f"Active Neural Model: `{model}`")
-else:
-    model = "sonar"
-    api_url = "https://api.perplexity.ai/chat/completions"
-    st.sidebar.info(f"Active Search Model: `{model}`")
-
-st.sidebar.markdown("---")
-if st.sidebar.button("🧹 Clear Mainframe Memory"):
-    st.session_state.messages = [{"role": "assistant", "content": "Memory purged, Sir. Systems reset to baseline."}]
-    st.rerun()
-
-st.sidebar.markdown("### 🛡️ System Status")
-st.sidebar.success("Core: Online\nSecurity: Maximum\nCreator: Seif (العبقري)")
-
-# الواجهة الرئيسية
-st.title("⚡ Jarvis | Ultimate Neural Core")
-st.markdown("##### المساعد الذكي الخارق الأقوى في العالم - مصمم خصيصاً للعبقري **سيف**")
-st.markdown("---")
-
-# عرض رسائل الشات
+# عرض الرسائل
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# استقبال الأوامر والتعامل مع الذكاء الاصطناعي الحقيقي
-if prompt := st.chat_input("اطرح أمرك على جارفيس..."):
+# إرسال الرسالة
+if prompt := st.chat_input("أمرك يا سيف..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        if not api_key:
-            response = "⚠️ يا سيدي، يرجى إدخال الـ API Key الصحيح في الشريط الجانبي لكي يتمكن جارفيس من الاتصال بالشبكة."
-            st.markdown(response)
-        else:
-            with st.spinner("جاري معالجة البيانات وتحليل البروتوكولات السيبرانية..."):
-                headers = {
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                }
-                
-                # تجهيز رسائل السيستم مع الشات التاريخي
-                formatted_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-                for m in st.session_state.messages[-10:]:
-                    formatted_messages.append({"role": m["role"], "content": m["content"]})
-                
-                payload = {
-                    "model": model,
-                    "messages": formatted_messages,
-                    "temperature": 0.7
-                }
-                
-                try:
-                    res = requests.post(api_url, headers=headers, json=payload)
-                    if res.status_code == 200:
-                        response = res.json()['choices'][0]['message']['content']
-                    else:
-                        response = f"❌ خطأ في النظام السيبراني ({res.status_code}): {res.text}"
-                except Exception as e:
-                    response = f"❌ خطأ في الاتصال بالشبكة: {str(e)}"
-                
-                st.markdown(response)
-                st.session_state.messages.append({"role": "assistant", "content": response})
+        if api_key:
+            headers = {"Authorization": f"Bearer {api_key}"}
+            payload = {
+                "model": model,
+                "messages": [{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages
+            }
+            res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload)
+            if res.status_code == 200:
+                answer = res.json()['choices'][0]['message']['content']
+                st.markdown(answer)
+                st.session_state.messages.append({"role": "assistant", "content": answer})
+            else:
+                st.error("خطأ في الاتصال، تأكد من الـ API Key والموديل.")
