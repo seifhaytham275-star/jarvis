@@ -1,5 +1,5 @@
 import streamlit as st
-from groq import Groq
+from openai import OpenAI
 import urllib.parse
 import requests
 from streamlit_mic_recorder import mic_recorder
@@ -82,7 +82,8 @@ with st.sidebar:
     tab1, tab2 = st.tabs(["💬 Chat History", "⚙️ Settings"])
     
     with tab2:
-        st.session_state.settings["api_key"] = st.text_input("Groq API Key", type="password")
+        # هنا هتدخل مفتاح DeepSeek API الخاص بك
+        st.session_state.settings["api_key"] = st.text_input("DeepSeek API Key", type="password")
         st.session_state.settings["serper_key"] = st.text_input("Serper API Key", type="password")
         st.session_state.settings["voice"] = st.toggle("Enable Voice Response", True)
         st.session_state.settings["mic_enabled"] = st.toggle("Enable Microphone", True)
@@ -119,18 +120,10 @@ user_text = prompt
 if audio_info and not prompt:
     api_key = st.session_state.settings.get("api_key")
     if not api_key:
-        st.warning("Please enter your Groq API Key in settings first!")
+        st.warning("Please enter your DeepSeek API Key in settings first!")
     else:
-        with st.spinner("Listening..."):
-            try:
-                client = Groq(api_key=api_key)
-                user_text = client.audio.transcriptions.create(
-                    file=("audio.wav", audio_info['bytes']), 
-                    model="whisper-large-v3", 
-                    response_format="text"
-                )
-            except Exception as e:
-                st.error(f"Voice failed: {e}")
+        # ملاحظة: لتحويل الصوت لنصوص يمكنك استخدام Groq Whisper أو تفعيل خاصية المتصفح، هنا سنترك الكود مرن
+        st.info("Voice transcription requires a compatible audio endpoint; text input is fully active.")
 
 if user_text:
     st.session_state.chats[active].append({"role": "user", "content": user_text})
@@ -140,7 +133,7 @@ if user_text:
     serper_key = st.session_state.settings.get("serper_key")
     
     if not api_key or len(api_key) < 10:
-        st.error("⚠️ Please enter a valid Groq API Key in the Settings tab first!")
+        st.error("⚠️ Please enter a valid DeepSeek API Key in the Settings tab first!")
     else:
         with st.spinner("Thinking..."):
             try:
@@ -156,13 +149,17 @@ if user_text:
                     f"Google Search Context: {search_context}"
                 )
                 
-                client = Groq(api_key=api_key)
+                # ربط عميل OpenAI بـ DeepSeek API الأساسي
+                client = OpenAI(
+                    api_key=api_key,
+                    base_url="https://api.deepseek.com"
+                )
+                
                 chat_payload = [{"role": "system", "content": system_prompt}] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.chats[active]]
                 
-                # استخدام الموديل الأسرع والأكثر توافقاً مع المفاتيح المجانية الجديدة
                 response = client.chat.completions.create(
-                    messages=chat_payload,
-                    model="llama-3.1-8b-instant"
+                    model="deepseek-chat",
+                    messages=chat_payload
                 )
                 response_text = response.choices[0].message.content
                 
@@ -171,4 +168,4 @@ if user_text:
                     st.markdown(response_text)
                     play_smooth_voice(response_text)
             except Exception as e:
-                st.error(f"Connection failed: {e}. Please check your API Key.")
+                st.error(f"Connection failed: {e}. Please check your DeepSeek API Key.")
