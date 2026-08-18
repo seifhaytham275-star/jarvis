@@ -13,8 +13,8 @@ st.set_page_config(
 # ===================== SESSION STATE =====================
 if 'messages' not in st.session_state:
     st.session_state.messages = []
-if 'sambanova_api_key' not in st.session_state:
-    st.session_state.sambanova_api_key = ""
+if 'groq_api_key' not in st.session_state:
+    st.session_state.groq_api_key = ""
 if 'serper_api_key' not in st.session_state:
     st.session_state.serper_api_key = ""
 if 'voice_enabled' not in st.session_state:
@@ -24,7 +24,7 @@ if 'mic_enabled' not in st.session_state:
 if 'arabic_mix' not in st.session_state:
     st.session_state.arabic_mix = False
 if 'model_name' not in st.session_state:
-    st.session_state.model_name = "Meta-Llama-3.3-70B-Instruct"
+    st.session_state.model_name = "llama-3.3-70b-versatile"
 if 'key_tested' not in st.session_state:
     st.session_state.key_tested = False
 
@@ -35,15 +35,15 @@ with st.sidebar:
     # ===== API KEYS SECTION =====
     st.subheader("🔑 API Keys")
     
-    sambanova_key = st.text_input(
-        "SambaNova API Key",
+    groq_key = st.text_input(
+        "Groq API Key",
         type="password",
-        placeholder="Enter your SambaNova API key...",
-        value=st.session_state.sambanova_api_key,
-        help="Get your key from cloud.sambanova.ai"
+        placeholder="gsk_...",
+        value=st.session_state.groq_api_key,
+        help="Get your free key from console.groq.com - no credit card required!"
     )
-    if sambanova_key:
-        st.session_state.sambanova_api_key = sambanova_key
+    if groq_key:
+        st.session_state.groq_api_key = groq_key
     
     serper_key = st.text_input(
         "Serper API Key",
@@ -56,15 +56,10 @@ with st.sidebar:
         st.session_state.serper_api_key = serper_key
     
     # API Key Status
-    if st.session_state.sambanova_api_key:
-        st.success("✅ SambaNova API Key set")
+    if st.session_state.groq_api_key:
+        st.success("✅ Groq API Key set")
     else:
-        st.warning("⚠️ SambaNova API Key required")
-    
-    if st.session_state.serper_api_key:
-        st.success("✅ Serper API Key set")
-    else:
-        st.info("ℹ️ Serper API Key optional (for web search)")
+        st.warning("⚠️ Groq API Key required")
     
     st.divider()
     
@@ -72,12 +67,15 @@ with st.sidebar:
     st.subheader("🧠 Model Selection")
     
     model_options = [
-        "Meta-Llama-3.3-70B-Instruct",  # ✅ Best free model, 240 RPM [citation:1]
-        "gpt-oss-120b",                 # ✅ Good for reasoning [citation:11]
-        "MiniMax-M2.7",                 # ✅ Fast and cheap [citation:11]
-        "DeepSeek-V3.1",                # ✅ Another option [citation:1]
-        "gemma-4-31B-it",               # ✅ Google model [citation:1]
-        "Llama-4-Maverick-17B-128E-Instruct",  # ✅ Newer model [citation:6]
+        "llama-3.3-70b-versatile",    # ✅ Best free model - 128K context
+        "llama-3.1-8b-instant",        # ✅ Fastest model
+        "llama-3.2-90b-vision-preview", # ✅ Vision model
+        "llama-3.2-11b-vision-preview", # ✅ Smaller vision model
+        "mixtral-8x7b-32768",          # ✅ Good for reasoning
+        "gemma2-9b-it",                # ✅ Google's model
+        "gpt-oss-120b",                # ✅ 120B parameter model
+        "gpt-oss-20b",                 # ✅ 20B parameter model
+        "qwen-3.2-32b",                # ✅ Qwen model
     ]
     
     selected_model = st.selectbox(
@@ -137,7 +135,7 @@ with st.sidebar:
     with col2:
         if st.button("🔄 Reset All", use_container_width=True):
             st.session_state.messages = []
-            st.session_state.sambanova_api_key = ""
+            st.session_state.groq_api_key = ""
             st.session_state.serper_api_key = ""
             st.session_state.key_tested = False
             st.rerun()
@@ -145,7 +143,7 @@ with st.sidebar:
     st.divider()
     
     # ===== STATUS =====
-    st.caption(f"🟢 Status: {'Ready' if st.session_state.sambanova_api_key else 'No API Key'}")
+    st.caption(f"🟢 Status: {'Ready' if st.session_state.groq_api_key else 'No API Key'}")
     st.caption(f"📡 Model: {st.session_state.model_name}")
     st.caption(f"💬 Messages: {len(st.session_state.messages)}")
 
@@ -178,42 +176,21 @@ def search_web(query):
         pass
     return None
 
-def get_available_models():
-    """Query SambaNova API to see which models are available"""
-    if not st.session_state.sambanova_api_key:
-        return None
-    
-    url = "https://api.sambanova.ai/v1/models"
-    headers = {
-        "Authorization": f"Bearer {st.session_state.sambanova_api_key}"
-    }
-    
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        if response.status_code == 200:
-            data = response.json()
-            models = data.get("data", [])
-            model_names = [m.get("id", "") for m in models]
-            return model_names
-        return None
-    except:
-        return None
-
-def get_sambanova_response(prompt, web_results=None):
-    """Get response from SambaNova API"""
-    if not st.session_state.sambanova_api_key:
-        return "⚠️ Please enter your SambaNova API Key in the sidebar."
+def get_groq_response(prompt, web_results=None):
+    """Get response from Groq API"""
+    if not st.session_state.groq_api_key:
+        return "⚠️ Please enter your Groq API Key in the sidebar."
     
     # Prepare the prompt with web results if available
     full_prompt = prompt
     if web_results:
         full_prompt = f"{prompt}\n\n🔍 Web Search Results:\n{web_results}"
     
-    # SambaNova API endpoint [citation:3]
-    url = "https://api.sambanova.ai/v1/chat/completions"
+    # Groq API endpoint
+    url = "https://api.groq.com/openai/v1/chat/completions"
     
     headers = {
-        "Authorization": f"Bearer {st.session_state.sambanova_api_key}",
+        "Authorization": f"Bearer {st.session_state.groq_api_key}",
         "Content-Type": "application/json"
     }
     
@@ -254,45 +231,38 @@ def get_sambanova_response(prompt, web_results=None):
             error = response.json()
             error_msg = error.get("error", {}).get("message", str(response.text))
             error_type = error.get("error", {}).get("type", "")
-            error_code = error.get("error", {}).get("code", "")
             
             # ===== HANDLE RATE LIMIT ERROR =====
-            if "rate" in error_type.lower() or "rate" in error_code.lower():
+            if "rate" in error_type.lower() or "rate" in str(response.status_code):
                 return (
                     "⏰ **Rate Limit Reached**\n\n"
-                    "SambaNova has rate limits to ensure stable service.\n\n"
-                    f"**Your current rate limits:**\n"
-                    f"• **Meta-Llama-3.3-70B**: 240 RPM, 48,000 RPD [citation:1]\n"
-                    f"• **Other models**: 60 RPM, 12,000 RPD [citation:1]\n\n"
+                    "Groq free tier limits:\n"
+                    "• **30 requests per minute**\n"
+                    "• **20,000 tokens per minute**\n"
+                    "• **14,400 requests per day**\n\n"
                     "**What to do:**\n"
-                    "1️⃣ Wait a few minutes and try again\n"
-                    "2️⃣ Try a different model from the dropdown\n"
-                    "3️⃣ SambaNova offers unlimited requests (rate-limited) [citation:12]\n\n"
+                    "1️⃣ Wait 1-2 minutes and try again\n"
+                    "2️⃣ The daily limit resets at midnight (UTC)\n"
+                    "3️⃣ Consider using a different model from the dropdown\n\n"
                     f"Error: {error_msg}"
                 )
             
             # ===== HANDLE MODEL NOT FOUND ERROR =====
             elif "model_not_found" in error_type or "404" in str(response.status_code):
-                available = get_available_models()
-                if available:
-                    models_list = "\n".join([f"  • `{m}`" for m in available[:10]])
-                    return (
-                        f"❌ **Model '{st.session_state.model_name}' not found.**\n\n"
-                        f"**Available models for your API key:**\n{models_list}\n\n"
-                        f"**Fix:**\n"
-                        f"1. Go to the sidebar\n"
-                        f"2. Select one of the available models from the dropdown\n\n"
-                        f"Error: {error_msg}"
-                    )
-                else:
-                    return (
-                        f"❌ **Model '{st.session_state.model_name}' not found.**\n\n"
-                        f"**Fix:**\n"
-                        f"1. Go to the sidebar\n"
-                        f"2. Try selecting a different model from the dropdown\n"
-                        f"3. Recommended: `Meta-Llama-3.3-70B-Instruct`, `gpt-oss-120b`, `MiniMax-M2.7`\n\n"
-                        f"Error: {error_msg}"
-                    )
+                return (
+                    f"❌ **Model '{st.session_state.model_name}' not found.**\n\n"
+                    f"**Available models on Groq:**\n"
+                    "• `llama-3.3-70b-versatile` (Best, 128K context)\n"
+                    "• `llama-3.1-8b-instant` (Fastest)\n"
+                    "• `mixtral-8x7b-32768` (Good for reasoning)\n"
+                    "• `gemma2-9b-it` (Google's model)\n"
+                    "• `gpt-oss-120b` (120B parameters)\n"
+                    "• `qwen-3.2-32b` (Qwen model)\n\n"
+                    f"**Fix:**\n"
+                    f"1. Go to the sidebar\n"
+                    f"2. Select one of the models listed above from the dropdown\n\n"
+                    f"Error: {error_msg}"
+                )
             
             return f"❌ Error: {error_msg}"
             
@@ -330,7 +300,7 @@ if prompt := st.chat_input("Hold to Speak..." if st.session_state.mic_enabled el
     # Get AI response
     with st.chat_message("assistant"):
         with st.spinner("🧠 Thinking..."):
-            response = get_sambanova_response(prompt, web_results)
+            response = get_groq_response(prompt, web_results)
             st.markdown(response)
             
             if st.session_state.voice_enabled:
@@ -343,24 +313,24 @@ if prompt := st.chat_input("Hold to Speak..." if st.session_state.mic_enabled el
 st.divider()
 col1, col2, col3 = st.columns(3)
 with col1:
-    st.caption("⚡ Powered by SambaNova")
+    st.caption("⚡ Powered by Groq")
 with col2:
     st.caption("🔧 Built with Streamlit")
 with col3:
     st.caption(f"📝 {len(st.session_state.messages)} messages")
 
 # ===================== AUTO-TEST API KEY =====================
-if st.session_state.sambanova_api_key and not st.session_state.key_tested:
+if st.session_state.groq_api_key and not st.session_state.key_tested:
     with st.sidebar:
         with st.status("🔍 Testing API Key...", expanded=False) as status:
             try:
-                test_response = get_sambanova_response("Hello")
+                test_response = get_groq_response("Hello")
                 if "Error" not in test_response and "Model" not in test_response:
                     status.update(label="✅ API Key works!", state="complete")
                     st.success("✅ Connection successful!")
                 else:
                     status.update(label="⚠️ API Key issue", state="error")
-                    st.warning("⚠️ Check model selection")
+                    st.warning("⚠️ Check model selection or rate limits")
                 st.session_state.key_tested = True
             except:
                 status.update(label="⚠️ Connection failed", state="error")
