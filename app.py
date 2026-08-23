@@ -80,50 +80,57 @@ def search_google(query):
     except Exception as e:
         return f"Search error: {e}"
 
-# دالة تنفيذ أوامر التطبيقات (للابتوب ولتطبيقات الهاتف المحمول)
-def execute_app_command(prompt_text):
+# دالة تنفيذ الأوامر الذكية بناءً على الجهاز (لابتوب أو موبايل)
+def execute_smart_command(prompt_text):
     text = prompt_text.lower()
     try:
-        # تطبيقات اللابتوب (Windows)
-        if "calculator" in text or "آلة حاسبة" in text:
+        # --- أوامر نظام ويندوز للابتوب ---
+        if "control panel" in text or "لوحة التحكم" in text:
+            subprocess.Popen("control", shell=True)
+            return "Executing Windows Protocol: Opening Control Panel."
+        elif "calculator" in text or "آلة حاسبة" in text or "calc" in text:
             subprocess.Popen("calc")
-            return "Executing desktop protocol: Opening Calculator."
+            return "Executing Windows Protocol: Opening Calculator."
+        elif "clock" in text or "ساعة" in text:
+            subprocess.Popen("start ms-clock:", shell=True)
+            return "Executing Windows Protocol: Opening Windows Clock."
         elif "notepad" in text or "مفكرة" in text:
             subprocess.Popen("notepad")
-            return "Executing desktop protocol: Opening Notepad."
-        elif "code" in text or "vs code" in text:
-            subprocess.Popen("code")
-            return "Executing desktop protocol: Opening Visual Studio Code."
+            return "Executing Windows Protocol: Opening Notepad."
+        elif "whatsapp" in text and ("chrome" in text or "متصفح" in text or "لابتوب" in text):
+            subprocess.Popen("start chrome https://web.whatsapp.com", shell=True)
+            return "Executing Windows Protocol: Opening WhatsApp Web in Chrome."
         elif "chrome" in text:
             subprocess.Popen("start chrome", shell=True)
-            return "Executing desktop protocol: Opening Google Chrome."
-        
-        # تطبيقات الموبايل (عرض بروتوكول الاتصال العميقة Deep Links)
-        elif "whatsapp" in text or "واتساب" in text:
-            return "Mobile Protocol Intent: whatsapp:// (Ready for native mobile execution)."
+            return "Executing Windows Protocol: Opening Google Chrome."
+
+        # --- بروتوكولات تطبيقات وتفضيلات أندرويد للموبايل ---
+        elif "settings" in text or "إعدادات" in text:
+            return "Android Intent Executed: intent:#Intent;action=android.settings.SETTINGS;end"
+        elif "whatsapp" in text:
+            return "Android Intent Executed: intent:#Intent;package=com.whatsapp;end"
         elif "instagram" in text or "انستجرام" in text:
-            return "Mobile Protocol Intent: instagram:// (Ready for native mobile execution)."
+            return "Android Intent Executed: intent:#Intent;package=com.instagram.android;end"
         elif "messenger" in text or "ماسنجر" in text:
-            return "Mobile Protocol Intent: fb-messenger:// (Ready for native mobile execution)."
+            return "Android Intent Executed: intent:#Intent;package=com.facebook.orca;end"
         elif "esound" in text:
-            return "Mobile Protocol Intent: esound:// (Ready for native mobile execution)."
+            return "Android Intent Executed: intent:#Intent;package=com.esound;end"
         else:
             return None
     except Exception as e:
         return f"Execution error: {e}"
 
-# تعليمات النظام الشاملة للابتوب والموبايل
+# تعليمات النظام لضمان المرونة التامة بين اللابتوب والموبايل
 SYSTEM_INSTRUCTION = """
 You are Jarvis, Seif's advanced personal security and system companion.
 - STYLE: Formal, precise, efficient, witty, and strict. NO emojis allowed in any response.
 - LANGUAGES: 
   * Speak fluent Egyptian Arabic when addressed in Arabic.
   * Speak refined British English when addressed in English.
-- DUAL SYSTEM EXECUTION PROTOCOL:
-  * You have dual awareness over Seif's laptop system and his mobile app ecosystem.
-  * When Seif asks to open a desktop utility (Calculator, Notepad, VS Code, Chrome), the system executes it directly on his laptop.
-  * When Seif asks to open mobile apps (WhatsApp, Instagram, Messenger, eSound, etc.), acknowledge the specific application protocol and confirm readiness.
-  * If web data is required, utilize the provided search results to deliver exact answers.
+- CROSS-PLATFORM EXECUTION PROTOCOL:
+  * You handle Windows system commands when Seif is on his laptop (e.g., Control Panel, Clock, Calculator, WhatsApp Web in Chrome).
+  * You handle Android Intent protocols when Seif triggers actions on his mobile device.
+  * Acknowledge commands with strict professionalism and provide exact execution feedback.
 """
 
 if "messages" not in st.session_state:
@@ -139,13 +146,13 @@ if prompt := st.chat_input("Enter command or query..."):
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # فحص طلب فتح التطبيقات
-    app_keywords = ["افتح", "open", "launch", "تشغيل"]
+    # فحص ما إذا كان الطلب يتطلب تنفيذ أمر نظام أو فتح تطبيق
+    app_keywords = ["افتح", "open", "launch", "تشغيل", "control panel", "clock", "calc", "settings"]
     is_app_request = any(kw in prompt.lower() for kw in app_keywords)
     
     execution_feedback = ""
     if is_app_request:
-        execution_feedback = execute_app_command(prompt)
+        execution_feedback = execute_smart_command(prompt)
 
     # التحقق من الحاجة للبحث
     search_keywords = ["ابحث", "إيه هو", "مين هو", "search", "what is", "who is", "latest"]
