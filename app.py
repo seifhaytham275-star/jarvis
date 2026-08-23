@@ -1,119 +1,136 @@
-import streamlit as st
-from openai import OpenAI
+import os
+import re
 import requests
+import streamlit as st
+from groq import Groq
 
-# 1. إعدادات الصفحة
-st.set_page_config(
-    page_title="J.A.R.V.I.S Prime + Search",
-    page_icon="🤖",
-    layout="centered"
-)
+# إعدادات صفحة Streamlit بدون إيموجيز وبشكل رسمي
+st.set_page_config(page_title="Jarvis Security System", layout="centered")
 
-# 2. تنسيقات CSS لشكل مظلم وأنيق
-st.markdown("""
-    <style>
-    .stApp {
-        background-color: #0e1117;
-        color: #ffffff;
-    }
-    .stTextInput input {
-        background-color: #161b22;
-        color: white;
-        border-radius: 8px;
-    }
-    </style>
-""", unsafe_allow_html=True)
+# --- 1. القائمة الجانبية لإدخال المفاتيح والأمان (Sidebar) ---
+with st.sidebar:
+    st.markdown("### System Configuration")
+    GROQ_API_KEY_INPUT = st.text_input("Groq API Key", type="password")
+    SERPER_API_KEY_INPUT = st.text_input("Serper API Key", type="password")
+    st.markdown("---")
+    st.markdown("Security Level: Maximum")
 
-# 3. إعداد الاتصال بالسيرفر
-@st.cache_resource
-def get_groq_client(api_key):
-    return OpenAI(
-        api_key=api_key,
-        base_url="https://api.groq.com/openai/v1"
-    )
+# --- 2. نظام الحماية والصلاحيات (باسورد Sefo2011) ---
+CORRECT_PASSWORD = "Sefo2011"
 
-# 4. دالة البحث عبر Serper
-def search_web(query, serper_key):
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    st.markdown("### Access Control Gate")
+    st.write("Restricted System. Enter authorization key to proceed:")
+    
+    password_input = st.text_input("Authorization Key", type="password")
+    
+    if st.button("Authenticate"):
+        if password_input == CORRECT_PASSWORD:
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error("Access Denied. Invalid key.")
+    st.stop()
+
+# --- 3. الواجهة الرسمية لجارفيس بعد اجتياز الحراسة ---
+st.markdown("### JARVIS // Secure Terminal")
+st.write("System online. All protocols active.")
+
+# التحقق من وجود المفاتيح في الـ Sidebar
+if not GROQ_API_KEY_INPUT or not SERPER_API_KEY_INPUT:
+    st.warning("Please enter your Groq and Serper API keys in the sidebar to proceed.")
+    st.stop()
+
+client = Groq(api_key=GROQ_API_KEY_INPUT)
+
+# دالة البحث المباشر عبر Serper
+def search_google(query):
     url = "https://google.serper.dev/search"
     payload = f'{{"q": "{query}"}}'
     headers = {
-        'X-API-KEY': serper_key,
+        'X-API-KEY': SERPER_API_KEY_INPUT,
         'Content-Type': 'application/json'
     }
     try:
-        response = requests.request("POST", url, headers=headers, data=payload)
-        results = response.json()
+        response = requests.post(url, headers=headers, data=payload)
+        res_data = response.json()
         
-        # تجميع أول 3 نتائج بحث بشكل مرتب
         snippets = []
-        if "organic" in results:
-            for item in results["organic"][:3]:
-                snippets.append(item.get("snippet", ""))
-        return " ".join(snippets)
-    except:
-        return ""
+        if "organic" in res_data:
+            for item in res_data["organic"][:3]:
+                if "snippet" in item:
+                    snippets.append(item["snippet"])
+        return " ".join(snippets) if snippets else "No direct results found."
+    except Exception as e:
+        return f"Search error: {e}"
 
-# 5. الواجهة الرئيسية
-st.title("🤖 J.A.R.V.I.S Prime")
-st.caption("Integrated with Search & Locked Engine")
+# تعليمات النظام بصلاحيات كاملة لكل تطبيقات هاتفك وبدون إيموجيز
+SYSTEM_INSTRUCTION = """
+You are Jarvis, Seif's advanced personal security and system companion.
+- STYLE: Formal, precise, efficient, witty, and strict. NO emojis allowed in any response.
+- LANGUAGES: 
+  * Speak fluent Egyptian Arabic when addressed in Arabic.
+  * Speak refined British English when addressed in English.
+- FULL SYSTEM & MOBILE APPS ACCESS:
+  * You have full awareness and access management protocols over Seif's mobile ecosystem as displayed in his system:
+    - Communication & Social: WhatsApp (whatsapp://), Messenger (fb-messenger://), Instagram (instagram://), Discord (discord://).
+    - Media & Music: eSound (esound://), YouTube.
+    - Utilities & Tools: Files, Gallery, Clock, Settings, Contacts, Calculator, Getcontact, Google, Gemini, DeepSeek, ZArchiver, Samsung Health, ZTFit.
+    - Games & Entertainment: UFL, Clash Royale, 8 Ball Pool, Block Blast, etc.
+  * When Seif requests an action or app execution, provide direct deep links or protocols to launch the installed application natively on his mobile device, bypassing Chrome entirely.
+  * AUTO-RESPONDER PROTOCOL: For private individual chats (e.g., when delayed), analyze context and draft personal replies in Seif's tone. Strict rule: Never trigger or respond in group chats.
+  * If web data is required, utilize the provided search results to deliver exact answers.
+"""
 
-# 6. الشريط الجانبي لإدخال المفاتيح
-with st.sidebar:
-    st.header("⚙️ Control Panel")
-    groq_key = st.text_input("Groq API Key", type="password")
-    serper_key = st.text_input("Serper API Key", type="password")
-    
-    st.markdown("---")
-    st.markdown("### 🧠 Engine Info")
-    TARGET_MODEL = "openai/gpt-oss-120b"
-    st.info(f"Locked Model:\n**{TARGET_MODEL}**")
-
-# 7. إدارة الذاكرة (Chat History)
 if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "assistant", "content": "Hello! J.A.R.V.I.S. at your service—ready with web search."}
-    ]
+    st.session_state.messages = [{"role": "system", "content": SYSTEM_INSTRUCTION}]
 
+# عرض سجل المحادثات بشكل رسمي
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+    if message["role"] != "system":
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
-# 8. صندوق الإرسال والمعالجة
-if prompt := st.chat_input("Type your message..."):
-    if not groq_key:
-        st.error("Please enter your Groq API Key in the sidebar first!")
-    else:
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+# استقبال الأوامر
+if prompt := st.chat_input("Enter command or query..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
 
-        with st.chat_message("assistant"):
-            try:
-                # لو المستخدم حط مفتاح Serper، نعمل بحث في الويب الأول
-                search_context = ""
-                if serper_key:
-                    with st.spinner("Searching the web..."):
-                        search_results = search_web(prompt, serper_key)
-                        if search_results:
-                            search_context = f"Web Search Results: {search_results}\n\n"
+    # التحقق من الحاجة للبحث
+    search_keywords = ["ابحث", "إيه هو", "مين هو", "search", "what is", "who is", "latest"]
+    needs_search = any(kw in prompt for kw in search_keywords)
+    
+    user_message_content = prompt
+    if needs_search:
+        with st.status("Executing web query...", expanded=False):
+            search_results = search_google(prompt)
+            user_message_content = f"{prompt}\n\n[Live Web Search Results from Google]: {search_results}"
 
-                # تجهيز رسائل المحادثة مع نتائج البحث إن وجدت
-                messages_payload = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
-                if search_context:
-                    # إضافة نتائج البحث لأحدث رسالة عشان الموديل يشوفها
-                    messages_payload[-1]["content"] = search_context + "User Question: " + prompt
+    api_messages = []
+    for m in st.session_state.messages:
+        if m["role"] == "system":
+            api_messages.append(m)
+        else:
+            if m["content"] == prompt:
+                api_messages.append({"role": m["role"], "content": user_message_content})
+            else:
+                api_messages.append({"role": m["role"], "content": m["content"]})
 
-                client = get_groq_client(groq_key)
-                response = client.chat.completions.create(
-                    model=TARGET_MODEL,
-                    messages=messages_payload,
-                    temperature=0.7
-                )
-                
-                assistant_response = response.choices[0].message.content
-                st.markdown(assistant_response)
-                
-                st.session_state.messages.append({"role": "assistant", "content": assistant_response})
-                
-            except Exception as e:
-                st.error(f"An error occurred: {str(e)}")
+    try:
+        completion = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=api_messages,
+            temperature=0.7,
+        )
+        reply = completion.choices[0].message.content
+    except Exception as e:
+        reply = f"Connection protocol error: {e}"
+
+    with st.chat_message("assistant"):
+        st.markdown(reply)
+        
+    st.session_state.messages.append({"role": "assistant", "content": reply})
