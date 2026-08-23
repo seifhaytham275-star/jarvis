@@ -7,11 +7,25 @@ from groq import Groq
 # إعدادات صفحة Streamlit بدون إيموجيز وبشكل رسمي
 st.set_page_config(page_title="Jarvis Security System", layout="centered")
 
-# --- 1. القائمة الجانبية لإدخال المفاتيح والأمان (Sidebar) ---
+# --- 1. القائمة الجانبية (Sidebar) لتعديل المفاتيح، الأمان، واختيار النموذج ---
 with st.sidebar:
     st.markdown("### System Configuration")
     GROQ_API_KEY_INPUT = st.text_input("Groq API Key", type="password")
     SERPER_API_KEY_INPUT = st.text_input("Serper API Key", type="password")
+    
+    st.markdown("---")
+    st.markdown("### Model Selection")
+    # قائمة منسدلة لاختيار النموذج المفضل من الـ Sidebar
+    selected_model = st.selectbox(
+        "Choose Groq Model:",
+        [
+            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
+            "llama-3.3-70b-versatile",
+            "qwen/qwen3.6-27b"
+        ]
+    )
+    
     st.markdown("---")
     st.markdown("Security Level: Maximum")
 
@@ -37,7 +51,7 @@ if not st.session_state.authenticated:
 
 # --- 3. الواجهة الرسمية لجارفيس بعد اجتياز الحراسة ---
 st.markdown("### JARVIS // Secure Terminal")
-st.write("System online. All protocols active.")
+st.write(f"System online. Active Model: `{selected_model}`")
 
 # التحقق من وجود المفاتيح في الـ Sidebar
 if not GROQ_API_KEY_INPUT or not SERPER_API_KEY_INPUT:
@@ -122,7 +136,7 @@ if prompt := st.chat_input("Enter command or query..."):
 
     try:
         completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=selected_model,  # استخدام النموذج المختار من القائمة الجانبية
             messages=api_messages,
             temperature=0.7,
         )
