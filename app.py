@@ -1,5 +1,4 @@
 import os
-import subprocess
 import requests
 import streamlit as st
 from groq import Groq
@@ -77,28 +76,22 @@ def search_google(query):
     except Exception as e:
         return f"Search error: {e}"
 
-# دالة تنفيذ الأوامر الذكية
+# دالة توليد أوامر التطبيقات والبروتوكولات (بدون أخطاء سحابية)
 def execute_smart_command(prompt_text):
     text = prompt_text.lower()
     try:
         if "control panel" in text or "لوحة التحكم" in text:
-            subprocess.Popen("control", shell=True)
-            return "Executing Windows Protocol: Opening Control Panel."
+            return "Windows Protocol Command: control (Control Panel execution ready)."
         elif "calculator" in text or "آلة حاسبة" in text or "calc" in text:
-            subprocess.Popen("calc")
-            return "Executing Windows Protocol: Opening Calculator."
+            return "Windows Protocol Command: calc (Calculator execution ready)."
         elif "clock" in text or "ساعة" in text:
-            subprocess.Popen("start ms-clock:", shell=True)
-            return "Executing Windows Protocol: Opening Windows Clock."
+            return "Windows Protocol Command: start ms-clock: (Clock execution ready)."
         elif "notepad" in text or "مفكرة" in text:
-            subprocess.Popen("notepad")
-            return "Executing Windows Protocol: Opening Notepad."
+            return "Windows Protocol Command: notepad (Notepad execution ready)."
         elif "whatsapp" in text and ("chrome" in text or "متصفح" in text or "لابتوب" in text):
-            subprocess.Popen("start chrome https://web.whatsapp.com", shell=True)
-            return "Executing Windows Protocol: Opening WhatsApp Web in Chrome."
+            return "Windows Protocol Command: start chrome https://web.whatsapp.com"
         elif "chrome" in text:
-            subprocess.Popen("start chrome", shell=True)
-            return "Executing Windows Protocol: Opening Google Chrome."
+            return "Windows Protocol Command: start chrome"
         elif "settings" in text or "إعدادات" in text:
             return "Android Intent Executed: intent:#Intent;action=android.settings.SETTINGS;end"
         elif "whatsapp" in text:
@@ -146,7 +139,7 @@ if prompt := st.chat_input("Enter command or query..."):
             user_message_content = f"{prompt}\n\n[Live Web Search Results from Google]: {search_results}"
             
     if execution_feedback:
-        user_message_content = f"{user_message_content}\n\n[System Execution Status]: {execution_feedback}"
+        user_message_content = f"{user_message_content}\n\n[System Protocol Status]: {execution_feedback}"
 
     api_messages = []
     for m in st.session_state.messages:
