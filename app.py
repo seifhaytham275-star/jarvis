@@ -1,5 +1,6 @@
 import os
 import re
+import subprocess
 import requests
 import streamlit as st
 from groq import Groq
@@ -15,7 +16,6 @@ with st.sidebar:
     
     st.markdown("---")
     st.markdown("### Model Selection")
-    # قائمة منسدلة لاختيار النموذج المفضل من الـ Sidebar
     selected_model = st.selectbox(
         "Choose Groq Model:",
         [
@@ -53,7 +53,6 @@ if not st.session_state.authenticated:
 st.markdown("### JARVIS // Secure Terminal")
 st.write(f"System online. Active Model: `{selected_model}`")
 
-# التحقق من وجود المفاتيح في الـ Sidebar
 if not GROQ_API_KEY_INPUT or not SERPER_API_KEY_INPUT:
     st.warning("Please enter your Groq and Serper API keys in the sidebar to proceed.")
     st.stop()
@@ -81,38 +80,72 @@ def search_google(query):
     except Exception as e:
         return f"Search error: {e}"
 
-# تعليمات النظام بصلاحيات كاملة لكل تطبيقات هاتفك وبدون إيموجيز
+# دالة تنفيذ أوامر التطبيقات (للابتوب ولتطبيقات الهاتف المحمول)
+def execute_app_command(prompt_text):
+    text = prompt_text.lower()
+    try:
+        # تطبيقات اللابتوب (Windows)
+        if "calculator" in text or "آلة حاسبة" in text:
+            subprocess.Popen("calc")
+            return "Executing desktop protocol: Opening Calculator."
+        elif "notepad" in text or "مفكرة" in text:
+            subprocess.Popen("notepad")
+            return "Executing desktop protocol: Opening Notepad."
+        elif "code" in text or "vs code" in text:
+            subprocess.Popen("code")
+            return "Executing desktop protocol: Opening Visual Studio Code."
+        elif "chrome" in text:
+            subprocess.Popen("start chrome", shell=True)
+            return "Executing desktop protocol: Opening Google Chrome."
+        
+        # تطبيقات الموبايل (عرض بروتوكول الاتصال العميقة Deep Links)
+        elif "whatsapp" in text or "واتساب" in text:
+            return "Mobile Protocol Intent: whatsapp:// (Ready for native mobile execution)."
+        elif "instagram" in text or "انستجرام" in text:
+            return "Mobile Protocol Intent: instagram:// (Ready for native mobile execution)."
+        elif "messenger" in text or "ماسنجر" in text:
+            return "Mobile Protocol Intent: fb-messenger:// (Ready for native mobile execution)."
+        elif "esound" in text:
+            return "Mobile Protocol Intent: esound:// (Ready for native mobile execution)."
+        else:
+            return None
+    except Exception as e:
+        return f"Execution error: {e}"
+
+# تعليمات النظام الشاملة للابتوب والموبايل
 SYSTEM_INSTRUCTION = """
 You are Jarvis, Seif's advanced personal security and system companion.
 - STYLE: Formal, precise, efficient, witty, and strict. NO emojis allowed in any response.
 - LANGUAGES: 
   * Speak fluent Egyptian Arabic when addressed in Arabic.
   * Speak refined British English when addressed in English.
-- FULL SYSTEM & MOBILE APPS ACCESS:
-  * You have full awareness and access management protocols over Seif's mobile ecosystem as displayed in his system:
-    - Communication & Social: WhatsApp (whatsapp://), Messenger (fb-messenger://), Instagram (instagram://), Discord (discord://).
-    - Media & Music: eSound (esound://), YouTube.
-    - Utilities & Tools: Files, Gallery, Clock, Settings, Contacts, Calculator, Getcontact, Google, Gemini, DeepSeek, ZArchiver, Samsung Health, ZTFit.
-    - Games & Entertainment: UFL, Clash Royale, 8 Ball Pool, Block Blast, etc.
-  * When Seif requests an action or app execution, provide direct deep links or protocols to launch the installed application natively on his mobile device, bypassing Chrome entirely.
-  * AUTO-RESPONDER PROTOCOL: For private individual chats (e.g., when delayed), analyze context and draft personal replies in Seif's tone. Strict rule: Never trigger or respond in group chats.
+- DUAL SYSTEM EXECUTION PROTOCOL:
+  * You have dual awareness over Seif's laptop system and his mobile app ecosystem.
+  * When Seif asks to open a desktop utility (Calculator, Notepad, VS Code, Chrome), the system executes it directly on his laptop.
+  * When Seif asks to open mobile apps (WhatsApp, Instagram, Messenger, eSound, etc.), acknowledge the specific application protocol and confirm readiness.
   * If web data is required, utilize the provided search results to deliver exact answers.
 """
 
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "system", "content": SYSTEM_INSTRUCTION}]
 
-# عرض سجل المحادثات بشكل رسمي
 for message in st.session_state.messages:
     if message["role"] != "system":
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-# استقبال الأوامر
 if prompt := st.chat_input("Enter command or query..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
+
+    # فحص طلب فتح التطبيقات
+    app_keywords = ["افتح", "open", "launch", "تشغيل"]
+    is_app_request = any(kw in prompt.lower() for kw in app_keywords)
+    
+    execution_feedback = ""
+    if is_app_request:
+        execution_feedback = execute_app_command(prompt)
 
     # التحقق من الحاجة للبحث
     search_keywords = ["ابحث", "إيه هو", "مين هو", "search", "what is", "who is", "latest"]
@@ -123,6 +156,9 @@ if prompt := st.chat_input("Enter command or query..."):
         with st.status("Executing web query...", expanded=False):
             search_results = search_google(prompt)
             user_message_content = f"{prompt}\n\n[Live Web Search Results from Google]: {search_results}"
+            
+    if execution_feedback:
+        user_message_content = f"{user_message_content}\n\n[System Execution Status]: {execution_feedback}"
 
     api_messages = []
     for m in st.session_state.messages:
@@ -136,7 +172,7 @@ if prompt := st.chat_input("Enter command or query..."):
 
     try:
         completion = client.chat.completions.create(
-            model=selected_model,  # استخدام النموذج المختار من القائمة الجانبية
+            model=selected_model,
             messages=api_messages,
             temperature=0.7,
         )
