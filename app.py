@@ -1,5 +1,4 @@
 import os
-import re
 import subprocess
 import requests
 import streamlit as st
@@ -8,7 +7,7 @@ from groq import Groq
 # إعدادات صفحة Streamlit بدون إيموجيز وبشكل رسمي
 st.set_page_config(page_title="Jarvis Security System", layout="centered")
 
-# --- 1. القائمة الجانبية (Sidebar) لتعديل المفاتيح، الأمان، واختيار النموذج ---
+# --- 1. القائمة الجانبية (Sidebar) ---
 with st.sidebar:
     st.markdown("### System Configuration")
     GROQ_API_KEY_INPUT = st.text_input("Groq API Key", type="password")
@@ -25,7 +24,6 @@ with st.sidebar:
             "qwen/qwen3.6-27b"
         ]
     )
-    
     st.markdown("---")
     st.markdown("Security Level: Maximum")
 
@@ -49,7 +47,7 @@ if not st.session_state.authenticated:
             st.error("Access Denied. Invalid key.")
     st.stop()
 
-# --- 3. الواجهة الرسمية لجارفيس بعد اجتياز الحراسة ---
+# --- 3. الواجهة الرسمية لجارفيس ---
 st.markdown("### JARVIS // Secure Terminal")
 st.write(f"System online. Active Model: `{selected_model}`")
 
@@ -70,7 +68,6 @@ def search_google(query):
     try:
         response = requests.post(url, headers=headers, data=payload)
         res_data = response.json()
-        
         snippets = []
         if "organic" in res_data:
             for item in res_data["organic"][:3]:
@@ -80,11 +77,10 @@ def search_google(query):
     except Exception as e:
         return f"Search error: {e}"
 
-# دالة تنفيذ الأوامر الذكية بناءً على الجهاز (لابتوب أو موبايل)
+# دالة تنفيذ الأوامر الذكية
 def execute_smart_command(prompt_text):
     text = prompt_text.lower()
     try:
-        # --- أوامر نظام ويندوز للابتوب ---
         if "control panel" in text or "لوحة التحكم" in text:
             subprocess.Popen("control", shell=True)
             return "Executing Windows Protocol: Opening Control Panel."
@@ -103,34 +99,21 @@ def execute_smart_command(prompt_text):
         elif "chrome" in text:
             subprocess.Popen("start chrome", shell=True)
             return "Executing Windows Protocol: Opening Google Chrome."
-
-        # --- بروتوكولات تطبيقات وتفضيلات أندرويد للموبايل ---
         elif "settings" in text or "إعدادات" in text:
             return "Android Intent Executed: intent:#Intent;action=android.settings.SETTINGS;end"
         elif "whatsapp" in text:
             return "Android Intent Executed: intent:#Intent;package=com.whatsapp;end"
-        elif "instagram" in text or "انستجرام" in text:
-            return "Android Intent Executed: intent:#Intent;package=com.instagram.android;end"
-        elif "messenger" in text or "ماسنجر" in text:
-            return "Android Intent Executed: intent:#Intent;package=com.facebook.orca;end"
-        elif "esound" in text:
-            return "Android Intent Executed: intent:#Intent;package=com.esound;end"
         else:
             return None
     except Exception as e:
         return f"Execution error: {e}"
 
-# تعليمات النظام لضمان المرونة التامة بين اللابتوب والموبايل
 SYSTEM_INSTRUCTION = """
 You are Jarvis, Seif's advanced personal security and system companion.
 - STYLE: Formal, precise, efficient, witty, and strict. NO emojis allowed in any response.
 - LANGUAGES: 
   * Speak fluent Egyptian Arabic when addressed in Arabic.
   * Speak refined British English when addressed in English.
-- CROSS-PLATFORM EXECUTION PROTOCOL:
-  * You handle Windows system commands when Seif is on his laptop (e.g., Control Panel, Clock, Calculator, WhatsApp Web in Chrome).
-  * You handle Android Intent protocols when Seif triggers actions on his mobile device.
-  * Acknowledge commands with strict professionalism and provide exact execution feedback.
 """
 
 if "messages" not in st.session_state:
@@ -146,7 +129,6 @@ if prompt := st.chat_input("Enter command or query..."):
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # فحص ما إذا كان الطلب يتطلب تنفيذ أمر نظام أو فتح تطبيق
     app_keywords = ["افتح", "open", "launch", "تشغيل", "control panel", "clock", "calc", "settings"]
     is_app_request = any(kw in prompt.lower() for kw in app_keywords)
     
@@ -154,7 +136,6 @@ if prompt := st.chat_input("Enter command or query..."):
     if is_app_request:
         execution_feedback = execute_smart_command(prompt)
 
-    # التحقق من الحاجة للبحث
     search_keywords = ["ابحث", "إيه هو", "مين هو", "search", "what is", "who is", "latest"]
     needs_search = any(kw in prompt for kw in search_keywords)
     
