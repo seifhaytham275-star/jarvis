@@ -1,2 +1,6 @@
 streamlit
 groq
+requests
+streamlit-mic-recorder
+openaistreamlit
+
