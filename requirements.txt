@@ -1,5 +1,5 @@
 Flask==2.0.1
-hermes-agent==1.0.0
+
 google-genai
 gradio
 streamlit
