@@ -3,6 +3,7 @@ import json
 from datetime import datetime
 from google import genai
 from google.genai import types
+import google_tools
 
 
 # ============================================================
@@ -42,6 +43,11 @@ STYLE:
 - For technical questions, provide useful explanations and code.
 - Use Markdown when useful.
 - Do not use emojis unless explicitly requested.
+- When live web search results are available to you, use them for anything
+  time-sensitive, current, or fact-checkable, and don't rely on memory alone.
+- If Gmail/Drive tools are available and the user asks about their email or
+  files, use those tools rather than guessing. If a specific URL is given,
+  use the URL context tool to actually read it before answering.
 """
 
 
@@ -318,6 +324,9 @@ if "last_error" not in st.session_state:
 if "connected_since" not in st.session_state:
     st.session_state.connected_since = None
 
+if "google_connected" not in st.session_state:
+    st.session_state.google_connected = google_tools.is_google_connected()
+
 
 # ============================================================
 # HEADER
@@ -472,6 +481,48 @@ with st.sidebar:
         value=0.8,
         step=0.1,
     )
+
+    web_search_enabled = st.toggle(
+        "🔎 LIVE WEB SEARCH",
+        value=True,
+        help="Lets JARVIS search Google and cite sources before answering.",
+    )
+
+    url_reading_enabled = st.toggle(
+        "🔗 READ LINKS I PASTE",
+        value=True,
+        help="Lets JARVIS fetch and read the actual content of URLs you give it.",
+    )
+
+    st.divider()
+
+    st.markdown("### GOOGLE ACCESS")
+
+    if st.session_state.google_connected:
+        st.markdown(
+            '<div class="status-online">● GMAIL + DRIVE LINKED</div>',
+            unsafe_allow_html=True,
+        )
+        gmail_drive_enabled = st.toggle("📧 GMAIL + 📁 DRIVE", value=True)
+    else:
+        st.markdown(
+            '<div class="status-offline">● GMAIL + DRIVE NOT LINKED</div>',
+            unsafe_allow_html=True,
+        )
+        gmail_drive_enabled = False
+
+        if st.button("🔗 CONNECT GOOGLE", use_container_width=True):
+            try:
+                google_tools.get_google_creds()
+                st.session_state.google_connected = True
+                st.success("Google account linked.")
+                st.rerun()
+            except FileNotFoundError as e:
+                st.error(str(e))
+            except Exception as e:
+                st.error(f"Google connection failed: {e}")
+
+        st.caption("Needs a one-time setup — see GOOGLE_SETUP.md.")
 
     st.divider()
 
@@ -632,6 +683,21 @@ if prompt:
 
         answer = None
         last_exc = None
+        grounding_sources = []
+
+        gen_tools = []
+        if web_search_enabled:
+            gen_tools.append(types.Tool(google_search=types.GoogleSearch()))
+        if url_reading_enabled:
+            gen_tools.append(types.Tool(url_context=types.UrlContext()))
+        if gmail_drive_enabled:
+            gen_tools.extend([
+                google_tools.search_gmail,
+                google_tools.search_drive,
+                google_tools.read_drive_file,
+            ])
+        if not gen_tools:
+            gen_tools = None
 
         for attempt in range(2):
 
@@ -648,12 +714,23 @@ if prompt:
                             temperature=temperature,
                             top_p=0.95,
                             max_output_tokens=4096,
+                            tools=gen_tools,
                         ),
                     )
                 )
 
                 if response and response.text:
                     answer = response.text.strip()
+
+                    try:
+                        candidate = response.candidates[0]
+                        chunks = candidate.grounding_metadata.grounding_chunks
+                        grounding_sources = [
+                            c.web.uri for c in chunks if getattr(c, "web", None) and c.web.uri
+                        ]
+                    except (AttributeError, IndexError, TypeError):
+                        grounding_sources = []
+
                     break
 
             except Exception as e:
@@ -663,6 +740,11 @@ if prompt:
         if answer:
 
             st.markdown(answer)
+
+            if grounding_sources:
+                with st.expander(f"🔎 {len(grounding_sources)} source(s) used"):
+                    for src in grounding_sources:
+                        st.markdown(f"- {src}")
 
             st.session_state.messages.append(
                 {
