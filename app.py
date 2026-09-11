@@ -1,4 +1,6 @@
 import streamlit as st
+import json
+from datetime import datetime
 from google import genai
 from google.genai import types
 
@@ -244,6 +246,9 @@ if "client" not in st.session_state:
 if "connected" not in st.session_state:
     st.session_state.connected = False
 
+if "last_error" not in st.session_state:
+    st.session_state.last_error = None
+
 
 # ============================================================
 # HEADER
@@ -290,6 +295,9 @@ with st.sidebar:
             unsafe_allow_html=True,
         )
 
+    if st.session_state.last_error:
+        st.caption(f"Last error: {st.session_state.last_error}")
+
     if st.button(
         "⚡ CONNECT JARVIS",
         use_container_width=True,
@@ -323,6 +331,7 @@ with st.sidebar:
 
                     st.session_state.client = new_client
                     st.session_state.connected = True
+                    st.session_state.last_error = None
 
                     st.success("JARVIS connected successfully.")
 
@@ -332,6 +341,7 @@ with st.sidebar:
 
                 st.session_state.client = None
                 st.session_state.connected = False
+                st.session_state.last_error = str(e)
 
                 st.error(
                     "Connection failed. Check your API key and model access."
@@ -350,6 +360,14 @@ with st.sidebar:
             "gemini-2.5-pro",
         ],
         index=0,
+    )
+
+    temperature = st.slider(
+        "CREATIVITY (temperature)",
+        min_value=0.0,
+        max_value=1.5,
+        value=0.8,
+        step=0.1,
     )
 
     st.divider()
@@ -371,14 +389,22 @@ with st.sidebar:
 
     st.divider()
 
-    if st.button(
-        "🗑 CLEAR CONVERSATION",
-        use_container_width=True,
-    ):
+    col_a, col_b = st.columns(2)
 
-        st.session_state.messages = []
+    with col_a:
+        if st.button("🗑 CLEAR", use_container_width=True):
+            st.session_state.messages = []
+            st.rerun()
 
-        st.rerun()
+    with col_b:
+        chat_json = json.dumps(st.session_state.messages, ensure_ascii=False, indent=2)
+        st.download_button(
+            "💾 EXPORT",
+            data=chat_json,
+            file_name=f"jarvis_chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            mime="application/json",
+            use_container_width=True,
+        )
 
     st.divider()
 
@@ -470,56 +496,63 @@ if prompt:
         )
 
     # --------------------------------------------------------
-    # Generate response
+    # Generate response (with one automatic retry)
     # --------------------------------------------------------
 
     with st.chat_message("assistant"):
 
-        try:
+        answer = None
+        last_exc = None
 
-            response = (
-                st.session_state.client
-                .models
-                .generate_content(
-                    model=model_name,
-                    contents=contents,
-                    config=types.GenerateContentConfig(
-                        system_instruction=SYSTEM_INSTRUCTION,
-                        temperature=0.8,
-                        top_p=0.95,
-                        max_output_tokens=4096,
-                    ),
+        for attempt in range(2):
+
+            try:
+
+                response = (
+                    st.session_state.client
+                    .models
+                    .generate_content(
+                        model=model_name,
+                        contents=contents,
+                        config=types.GenerateContentConfig(
+                            system_instruction=SYSTEM_INSTRUCTION,
+                            temperature=temperature,
+                            top_p=0.95,
+                            max_output_tokens=4096,
+                        ),
+                    )
                 )
+
+                if response and response.text:
+                    answer = response.text.strip()
+                    break
+
+            except Exception as e:
+                last_exc = e
+                continue
+
+        if answer:
+
+            st.markdown(answer)
+
+            st.session_state.messages.append(
+                {
+                    "role": "assistant",
+                    "content": answer,
+                }
             )
 
-            if response and response.text:
-
-                answer = response.text.strip()
-
-                st.markdown(answer)
-
-                st.session_state.messages.append(
-                    {
-                        "role": "assistant",
-                        "content": answer,
-                    }
-                )
-
-            else:
-
-                st.error(
-                    "Gemini returned an empty response."
-                )
-
-        except Exception as e:
+        else:
 
             st.error(
-                "JARVIS encountered an error while "
-                "communicating with Gemini."
+                "JARVIS encountered an error while communicating with Gemini."
             )
 
-            # Useful for debugging in Streamlit logs
-            print(f"Gemini error: {e}")
+            if last_exc:
+                st.caption(f"Details: {last_exc}")
+                print(f"Gemini error: {last_exc}")
+            else:
+                st.caption("Gemini returned an empty response.")
 
 
 # ============================================================
