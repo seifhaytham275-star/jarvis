@@ -38,7 +38,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY")
 GRAPH_API_VERSION = "v21.0"
 WHATSAPP_SEND_URL = f"https://graph.facebook.com/{GRAPH_API_VERSION}/{PHONE_NUMBER_ID}/messages"
 
-MODEL_NAME = "gemini-2.5-flash"
+MODEL_NAME = "gemini-3.8-flash"
 
 SYSTEM_INSTRUCTION = """
 You are JARVIS, Seif's personal AI assistant, now reachable on WhatsApp.
