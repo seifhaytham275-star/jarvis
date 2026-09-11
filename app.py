@@ -51,7 +51,22 @@ STYLE:
 
 st.markdown(
     """
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
     <style>
+
+    :root {
+        --bg-deep: #05090d;
+        --panel: #0a1117;
+        --panel-raised: #0d151d;
+        --cyan: #33e8ff;
+        --amber: #ffb238;
+        --text-hi: #eaf6f8;
+        --text-mid: #8fa3ab;
+        --text-low: #4c6169;
+        --line: rgba(51, 232, 255, 0.16);
+    }
 
     /* ======================================================
        GLOBAL
@@ -59,23 +74,14 @@ st.markdown(
 
     .stApp {
         background:
-            radial-gradient(
-                circle at 90% 5%,
-                rgba(0,255,225,0.09),
-                transparent 30%
-            ),
-            radial-gradient(
-                circle at 5% 95%,
-                rgba(0,130,255,0.08),
-                transparent 35%
-            ),
-            #05080f;
-        color: #dffffb;
+            radial-gradient(circle at 88% 0%, rgba(51,232,255,0.07), transparent 32%),
+            radial-gradient(circle at 8% 100%, rgba(255,178,56,0.05), transparent 38%),
+            var(--bg-deep);
+        color: var(--text-hi);
+        font-family: 'IBM Plex Mono', monospace;
     }
 
-    .main {
-        background: transparent;
-    }
+    .main { background: transparent; }
 
     /* ======================================================
        HEADER
@@ -83,91 +89,125 @@ st.markdown(
 
     .jarvis-header {
         text-align: center;
-        padding: 20px 0 25px 0;
+        padding: 22px 0 0 0;
     }
 
     .jarvis-title {
-        color: #00ffe1;
-        font-family: monospace;
-        font-size: 42px;
-        font-weight: 800;
-        letter-spacing: 8px;
+        color: var(--text-hi);
+        font-family: 'Chakra Petch', sans-serif;
+        font-size: 40px;
+        font-weight: 700;
+        letter-spacing: 6px;
         margin: 0;
+    }
 
-        text-shadow:
-            0 0 5px #00ffe1,
-            0 0 15px #00ffe1,
-            0 0 35px rgba(0,255,225,0.45);
+    .jarvis-title span {
+        color: var(--cyan);
+        text-shadow: 0 0 18px rgba(51,232,255,0.55);
     }
 
     .jarvis-subtitle {
-        color: #62828b;
-        font-family: monospace;
+        color: var(--text-low);
         font-size: 11px;
         letter-spacing: 3px;
-        margin-top: 8px;
+        margin-top: 6px;
     }
+
+    .jarvis-scanline {
+        height: 2px;
+        margin: 18px auto 22px auto;
+        max-width: 640px;
+        background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+        background-size: 200% 100%;
+        animation: scan 3.2s linear infinite;
+        opacity: 0.7;
+    }
+
+    @keyframes scan {
+        0%   { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+
+    /* ======================================================
+       METRIC STRIP
+    ====================================================== */
+
+    .metric-strip {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 22px;
+        flex-wrap: wrap;
+    }
+
+    .metric-chip {
+        flex: 1;
+        min-width: 150px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 9px 14px;
+    }
+
+    .metric-chip .k {
+        color: var(--text-low);
+        font-size: 10px;
+        letter-spacing: 2px;
+    }
+
+    .metric-chip .v {
+        color: var(--text-hi);
+        font-size: 13px;
+        font-weight: 500;
+        margin-top: 2px;
+    }
+
+    .metric-chip .v.on { color: var(--cyan); }
+    .metric-chip .v.off { color: #ff6b6b; }
 
     /* ======================================================
        SIDEBAR
     ====================================================== */
 
     section[data-testid="stSidebar"] {
-        background:
-            linear-gradient(
-                180deg,
-                #030a12 0%,
-                #050d16 100%
-            );
-
-        border-right:
-            1px solid rgba(0,255,225,0.15);
+        background: linear-gradient(180deg, #030609 0%, #050b10 100%);
+        border-right: 1px solid var(--line);
     }
 
-    section[data-testid="stSidebar"] h2 {
-        color: #00ffe1;
-        font-family: monospace;
-        letter-spacing: 3px;
+    section[data-testid="stSidebar"] h2,
+    section[data-testid="stSidebar"] h3 {
+        color: var(--cyan);
+        font-family: 'Chakra Petch', sans-serif;
+        letter-spacing: 2px;
+        font-weight: 600;
+    }
+
+    section[data-testid="stSidebar"] .stCaption {
+        color: var(--text-low);
     }
 
     /* ======================================================
        STATUS
     ====================================================== */
 
-    .status-online {
-        padding: 12px;
-        border-radius: 8px;
-
-        background:
-            rgba(0,255,225,0.06);
-
-        border:
-            1px solid rgba(0,255,225,0.25);
-
-        color: #00ffe1;
-        font-family: monospace;
+    .status-online, .status-offline {
+        padding: 11px;
+        border-radius: 4px;
         text-align: center;
         letter-spacing: 2px;
+        font-size: 12px;
+        margin: 10px 0 16px 0;
+    }
 
-        margin: 10px 0 20px 0;
+    .status-online {
+        background: rgba(51,232,255,0.06);
+        border: 1px solid rgba(51,232,255,0.3);
+        color: var(--cyan);
     }
 
     .status-offline {
-        padding: 12px;
-        border-radius: 8px;
-
-        background:
-            rgba(255,60,60,0.05);
-
-        border:
-            1px solid rgba(255,60,60,0.20);
-
-        color: #ff7070;
-        font-family: monospace;
-        text-align: center;
-        letter-spacing: 2px;
-
-        margin: 10px 0 20px 0;
+        background: rgba(255,107,107,0.05);
+        border: 1px solid rgba(255,107,107,0.25);
+        color: #ff8a8a;
     }
 
     /* ======================================================
@@ -175,8 +215,34 @@ st.markdown(
     ====================================================== */
 
     [data-testid="stChatMessage"] {
-        border-radius: 14px;
-        padding: 5px 10px;
+        border-radius: 10px;
+        padding: 4px 8px;
+        background: transparent;
+    }
+
+    [data-testid="stChatMessageContent"] {
+        border-radius: 10px;
+    }
+
+    div[data-testid="stChatMessage"]:has(div[data-testid="stChatMessageAvatarUser"]) {
+        background: rgba(255,178,56,0.03);
+        border-left: 2px solid rgba(255,178,56,0.35);
+    }
+
+    div[data-testid="stChatMessage"]:has(div[data-testid="stChatMessageAvatarAssistant"]) {
+        background: rgba(51,232,255,0.03);
+        border-left: 2px solid rgba(51,232,255,0.35);
+    }
+
+    /* ======================================================
+       SUGGESTION CHIPS
+    ====================================================== */
+
+    .suggestion-label {
+        color: var(--text-low);
+        font-size: 11px;
+        letter-spacing: 2px;
+        margin: 4px 0 10px 2px;
     }
 
     /* ======================================================
@@ -184,7 +250,8 @@ st.markdown(
     ====================================================== */
 
     [data-testid="stChatInput"] {
-        border-radius: 14px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
     }
 
     /* ======================================================
@@ -192,18 +259,20 @@ st.markdown(
     ====================================================== */
 
     .stButton > button {
-        border-radius: 9px;
-        border: 1px solid rgba(0,255,225,0.25);
-        background: rgba(0,255,225,0.04);
-        color: #00ffe1;
-        font-family: monospace;
-        transition: all 0.2s ease;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--cyan);
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 13px;
+        transition: all 0.15s ease;
     }
 
     .stButton > button:hover {
-        border-color: #00ffe1;
-        box-shadow:
-            0 0 15px rgba(0,255,225,0.18);
+        border-color: var(--cyan);
+        background: rgba(51,232,255,0.08);
+        box-shadow: 0 0 14px rgba(51,232,255,0.16);
+        color: var(--text-hi);
     }
 
     /* ======================================================
@@ -212,20 +281,17 @@ st.markdown(
 
     .jarvis-footer {
         text-align: center;
-        color: #3d5961;
-        font-family: monospace;
+        color: var(--text-low);
         font-size: 10px;
         letter-spacing: 2px;
-        padding: 25px 0 10px 0;
+        padding: 28px 0 12px 0;
     }
 
     /* ======================================================
        DIVIDER
     ====================================================== */
 
-    hr {
-        border-color: rgba(0,255,225,0.10) !important;
-    }
+    hr { border-color: var(--line) !important; }
 
     </style>
     """,
@@ -249,6 +315,9 @@ if "connected" not in st.session_state:
 if "last_error" not in st.session_state:
     st.session_state.last_error = None
 
+if "connected_since" not in st.session_state:
+    st.session_state.connected_since = None
+
 
 # ============================================================
 # HEADER
@@ -257,9 +326,39 @@ if "last_error" not in st.session_state:
 st.markdown(
     """
     <div class="jarvis-header">
-        <div class="jarvis-title">JARVIS AI</div>
+        <div class="jarvis-title">JAR<span>VIS</span></div>
         <div class="jarvis-subtitle">
-            PERSONAL INTELLIGENCE SYSTEM // GEMINI POWERED
+            PERSONAL INTELLIGENCE SYSTEM &nbsp;//&nbsp; GEMINI POWERED
+        </div>
+    </div>
+    <div class="jarvis-scanline"></div>
+    """,
+    unsafe_allow_html=True,
+)
+
+status_label = "ONLINE" if st.session_state.connected else "OFFLINE"
+status_class = "on" if st.session_state.connected else "off"
+uptime_label = (
+    st.session_state.connected_since.strftime("%H:%M")
+    if st.session_state.connected_since
+    else "--:--"
+)
+active_model = st.session_state.get("active_model", "—")
+
+st.markdown(
+    f"""
+    <div class="metric-strip">
+        <div class="metric-chip">
+            <div class="k">STATUS</div>
+            <div class="v {status_class}">{status_label}</div>
+        </div>
+        <div class="metric-chip">
+            <div class="k">MODEL</div>
+            <div class="v">{active_model}</div>
+        </div>
+        <div class="metric-chip">
+            <div class="k">CONNECTED SINCE</div>
+            <div class="v">{uptime_label}</div>
         </div>
     </div>
     """,
@@ -320,7 +419,7 @@ with st.sidebar:
 
                 # Test the connection
                 test_response = new_client.models.generate_content(
-                    model="gemini-2.5-flash",
+                    model="gemini-3.8-flash",
                     contents="Reply with exactly: ONLINE",
                     config=types.GenerateContentConfig(
                         max_output_tokens=10
@@ -332,6 +431,8 @@ with st.sidebar:
                     st.session_state.client = new_client
                     st.session_state.connected = True
                     st.session_state.last_error = None
+                    st.session_state.connected_since = datetime.now()
+                    st.session_state.active_model = "gemini-3.8-flash"
 
                     st.success("JARVIS connected successfully.")
 
@@ -356,11 +457,13 @@ with st.sidebar:
     model_name = st.selectbox(
         "AI MODEL",
         [
-            "gemini-2.5-flash",
-            "gemini-2.5-pro",
+            "gemini-3.8-flash",
+            "gemini-3.6-flash",
+            "gemini-3.1-pro",
         ],
         index=0,
     )
+    st.session_state.active_model = model_name
 
     temperature = st.slider(
         "CREATIVITY (temperature)",
@@ -419,11 +522,34 @@ with st.sidebar:
 # DISPLAY CHAT HISTORY
 # ============================================================
 
+AVATARS = {"user": "🧑", "assistant": "⚡"}
+
 for message in st.session_state.messages:
 
-    with st.chat_message(message["role"]):
+    with st.chat_message(message["role"], avatar=AVATARS.get(message["role"])):
 
         st.markdown(message["content"])
+
+# ============================================================
+# SUGGESTION CHIPS (only before the first message)
+# ============================================================
+
+if not st.session_state.messages:
+
+    st.markdown('<div class="suggestion-label">TRY ASKING</div>', unsafe_allow_html=True)
+
+    suggestions = [
+        "Debug this Python error for me",
+        "Summarize a long document",
+        "Brainstorm names for a project",
+    ]
+
+    chip_cols = st.columns(len(suggestions))
+
+    for col, suggestion in zip(chip_cols, suggestions):
+        if col.button(suggestion, use_container_width=True, key=f"chip_{suggestion}"):
+            st.session_state.pending_prompt = suggestion
+            st.rerun()
 
 
 # ============================================================
@@ -433,6 +559,9 @@ for message in st.session_state.messages:
 prompt = st.chat_input(
     "Talk to JARVIS..."
 )
+
+if not prompt and st.session_state.get("pending_prompt"):
+    prompt = st.session_state.pop("pending_prompt")
 
 
 # ============================================================
@@ -465,7 +594,7 @@ if prompt:
         }
     )
 
-    with st.chat_message("user"):
+    with st.chat_message("user", avatar=AVATARS["user"]):
         st.markdown(prompt)
 
     # --------------------------------------------------------
@@ -499,7 +628,7 @@ if prompt:
     # Generate response (with one automatic retry)
     # --------------------------------------------------------
 
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant", avatar=AVATARS["assistant"]):
 
         answer = None
         last_exc = None
@@ -562,7 +691,7 @@ if prompt:
 st.markdown(
     """
     <div class="jarvis-footer">
-        JARVIS ONLINE // GEMINI CORE // SEIF'S PROJECT
+        JARVIS &nbsp;//&nbsp; GEMINI CORE &nbsp;//&nbsp; SEIF'S PROJECT
     </div>
     """,
     unsafe_allow_html=True,
