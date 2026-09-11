@@ -1,5 +1,5 @@
-Flask==2.0.1
-
-google-genai
-gradio
 streamlit
+google-genai
+google-auth
+google-auth-oauthlib
+google-api-python-client
