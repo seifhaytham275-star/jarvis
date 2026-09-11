@@ -1,6 +1,18 @@
-import gradio as gr
+import streamlit as st
 from google import genai
 from google.genai import types
+
+
+# ============================================================
+# PAGE CONFIG
+# ============================================================
+
+st.set_page_config(
+    page_title="JARVIS AI // SEIF",
+    page_icon="⚡",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 
 # ============================================================
@@ -32,547 +44,493 @@ STYLE:
 
 
 # ============================================================
-# GLOBAL CLIENT
+# CSS
 # ============================================================
 
-client = None
+st.markdown(
+    """
+    <style>
+
+    /* ======================================================
+       GLOBAL
+    ====================================================== */
+
+    .stApp {
+        background:
+            radial-gradient(
+                circle at 90% 5%,
+                rgba(0,255,225,0.09),
+                transparent 30%
+            ),
+            radial-gradient(
+                circle at 5% 95%,
+                rgba(0,130,255,0.08),
+                transparent 35%
+            ),
+            #05080f;
+        color: #dffffb;
+    }
+
+    .main {
+        background: transparent;
+    }
+
+    /* ======================================================
+       HEADER
+    ====================================================== */
+
+    .jarvis-header {
+        text-align: center;
+        padding: 20px 0 25px 0;
+    }
+
+    .jarvis-title {
+        color: #00ffe1;
+        font-family: monospace;
+        font-size: 42px;
+        font-weight: 800;
+        letter-spacing: 8px;
+        margin: 0;
+
+        text-shadow:
+            0 0 5px #00ffe1,
+            0 0 15px #00ffe1,
+            0 0 35px rgba(0,255,225,0.45);
+    }
+
+    .jarvis-subtitle {
+        color: #62828b;
+        font-family: monospace;
+        font-size: 11px;
+        letter-spacing: 3px;
+        margin-top: 8px;
+    }
+
+    /* ======================================================
+       SIDEBAR
+    ====================================================== */
+
+    section[data-testid="stSidebar"] {
+        background:
+            linear-gradient(
+                180deg,
+                #030a12 0%,
+                #050d16 100%
+            );
+
+        border-right:
+            1px solid rgba(0,255,225,0.15);
+    }
+
+    section[data-testid="stSidebar"] h2 {
+        color: #00ffe1;
+        font-family: monospace;
+        letter-spacing: 3px;
+    }
+
+    /* ======================================================
+       STATUS
+    ====================================================== */
+
+    .status-online {
+        padding: 12px;
+        border-radius: 8px;
+
+        background:
+            rgba(0,255,225,0.06);
+
+        border:
+            1px solid rgba(0,255,225,0.25);
+
+        color: #00ffe1;
+        font-family: monospace;
+        text-align: center;
+        letter-spacing: 2px;
+
+        margin: 10px 0 20px 0;
+    }
+
+    .status-offline {
+        padding: 12px;
+        border-radius: 8px;
+
+        background:
+            rgba(255,60,60,0.05);
+
+        border:
+            1px solid rgba(255,60,60,0.20);
+
+        color: #ff7070;
+        font-family: monospace;
+        text-align: center;
+        letter-spacing: 2px;
+
+        margin: 10px 0 20px 0;
+    }
+
+    /* ======================================================
+       CHAT
+    ====================================================== */
+
+    [data-testid="stChatMessage"] {
+        border-radius: 14px;
+        padding: 5px 10px;
+    }
+
+    /* ======================================================
+       INPUT
+    ====================================================== */
+
+    [data-testid="stChatInput"] {
+        border-radius: 14px;
+    }
+
+    /* ======================================================
+       BUTTONS
+    ====================================================== */
+
+    .stButton > button {
+        border-radius: 9px;
+        border: 1px solid rgba(0,255,225,0.25);
+        background: rgba(0,255,225,0.04);
+        color: #00ffe1;
+        font-family: monospace;
+        transition: all 0.2s ease;
+    }
+
+    .stButton > button:hover {
+        border-color: #00ffe1;
+        box-shadow:
+            0 0 15px rgba(0,255,225,0.18);
+    }
+
+    /* ======================================================
+       FOOTER
+    ====================================================== */
+
+    .jarvis-footer {
+        text-align: center;
+        color: #3d5961;
+        font-family: monospace;
+        font-size: 10px;
+        letter-spacing: 2px;
+        padding: 25px 0 10px 0;
+    }
+
+    /* ======================================================
+       DIVIDER
+    ====================================================== */
+
+    hr {
+        border-color: rgba(0,255,225,0.10) !important;
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 # ============================================================
-# CONNECT GEMINI
+# SESSION STATE
 # ============================================================
 
-def connect_api(api_key):
-    global client
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-    if not api_key or not api_key.strip():
-        return (
-            "🔴 DISCONNECTED",
-            "Please enter your Gemini API key."
+if "client" not in st.session_state:
+    st.session_state.client = None
+
+if "connected" not in st.session_state:
+    st.session_state.connected = False
+
+
+# ============================================================
+# HEADER
+# ============================================================
+
+st.markdown(
+    """
+    <div class="jarvis-header">
+        <div class="jarvis-title">JARVIS AI</div>
+        <div class="jarvis-subtitle">
+            PERSONAL INTELLIGENCE SYSTEM // GEMINI POWERED
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# ============================================================
+# SIDEBAR
+# ============================================================
+
+with st.sidebar:
+
+    st.markdown("## SYSTEM")
+
+    st.caption("GEMINI CORE CONNECTION")
+
+    api_key = st.text_input(
+        "Gemini API Key",
+        type="password",
+        placeholder="Enter your Gemini API key...",
+        help="The key is entered into this session and is not written into app.py.",
+    )
+
+    if st.session_state.connected:
+        st.markdown(
+            '<div class="status-online">● SYSTEM ONLINE</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            '<div class="status-offline">● SYSTEM OFFLINE</div>',
+            unsafe_allow_html=True,
         )
 
-    try:
-        test_client = genai.Client(api_key=api_key.strip())
+    if st.button(
+        "⚡ CONNECT JARVIS",
+        use_container_width=True,
+    ):
 
-        # Save only after successful initialization
-        client = test_client
+        if not api_key.strip():
 
-        return (
-            "🟢 ONLINE",
-            "Gemini connection established successfully."
-        )
+            st.session_state.connected = False
+            st.session_state.client = None
 
-    except Exception as e:
-        client = None
+            st.error("Please enter your Gemini API key.")
 
-        return (
-            "🔴 ERROR",
-            f"Could not connect to Gemini.\n\n{str(e)}"
-        )
+        else:
+
+            try:
+
+                new_client = genai.Client(
+                    api_key=api_key.strip()
+                )
+
+                # Test the connection
+                test_response = new_client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents="Reply with exactly: ONLINE",
+                    config=types.GenerateContentConfig(
+                        max_output_tokens=10
+                    ),
+                )
+
+                if test_response:
+
+                    st.session_state.client = new_client
+                    st.session_state.connected = True
+
+                    st.success("JARVIS connected successfully.")
+
+                    st.rerun()
+
+            except Exception as e:
+
+                st.session_state.client = None
+                st.session_state.connected = False
+
+                st.error(
+                    "Connection failed. Check your API key and model access."
+                )
+
+    st.divider()
+
+    # ========================================================
+    # MODEL
+    # ========================================================
+
+    model_name = st.selectbox(
+        "AI MODEL",
+        [
+            "gemini-2.5-flash",
+            "gemini-2.5-pro",
+        ],
+        index=0,
+    )
+
+    st.divider()
+
+    # ========================================================
+    # CONTROLS
+    # ========================================================
+
+    st.markdown("### JARVIS CORE")
+
+    if st.session_state.connected:
+        st.write("Status: **ONLINE**")
+    else:
+        st.write("Status: **OFFLINE**")
+
+    st.write("Engine: **Google Gemini**")
+    st.write("Mode: **Personal Assistant**")
+    st.write("Interface: **Cyber Terminal**")
+
+    st.divider()
+
+    if st.button(
+        "🗑 CLEAR CONVERSATION",
+        use_container_width=True,
+    ):
+
+        st.session_state.messages = []
+
+        st.rerun()
+
+    st.divider()
+
+    st.caption(
+        "SECURITY NOTICE\n\n"
+        "Never publish your API key in source code, GitHub, "
+        "or screenshots."
+    )
 
 
 # ============================================================
-# CHAT FUNCTION
+# DISPLAY CHAT HISTORY
 # ============================================================
 
-def predict(message, history, model_name):
-    global client
+for message in st.session_state.messages:
 
-    if client is None:
-        return (
-            "🔴 JARVIS is not connected.\n\n"
-            "Open the SYSTEM sidebar, enter your Gemini API key, "
-            "and press CONNECT."
+    with st.chat_message(message["role"]):
+
+        st.markdown(message["content"])
+
+
+# ============================================================
+# CHAT INPUT
+# ============================================================
+
+prompt = st.chat_input(
+    "Talk to JARVIS..."
+)
+
+
+# ============================================================
+# PROCESS MESSAGE
+# ============================================================
+
+if prompt:
+
+    # --------------------------------------------------------
+    # Check connection
+    # --------------------------------------------------------
+
+    if not st.session_state.connected:
+
+        st.warning(
+            "JARVIS is offline. Enter your Gemini API key "
+            "in the SYSTEM sidebar and connect first."
         )
 
-    if not message or not message.strip():
-        return ""
+        st.stop()
 
-    try:
-        contents = []
+    # --------------------------------------------------------
+    # Store user message
+    # --------------------------------------------------------
 
-        # Convert Gradio history to Gemini format
-        if history:
+    st.session_state.messages.append(
+        {
+            "role": "user",
+            "content": prompt,
+        }
+    )
 
-            for item in history:
+    with st.chat_message("user"):
+        st.markdown(prompt)
 
-                # New Gradio message format
-                if isinstance(item, dict):
+    # --------------------------------------------------------
+    # Prepare Gemini history
+    # --------------------------------------------------------
 
-                    role = item.get("role")
-                    content = item.get("content")
+    contents = []
 
-                    if role not in ("user", "assistant"):
-                        continue
+    for message in st.session_state.messages:
 
-                    if not isinstance(content, str):
-                        continue
+        role = message["role"]
 
-                    if not content.strip():
-                        continue
+        gemini_role = (
+            "user"
+            if role == "user"
+            else "model"
+        )
 
-                    gemini_role = (
-                        "user"
-                        if role == "user"
-                        else "model"
-                    )
-
-                    contents.append(
-                        types.Content(
-                            role=gemini_role,
-                            parts=[
-                                types.Part(
-                                    text=content
-                                )
-                            ],
-                        )
-                    )
-
-                # Old tuple format
-                elif isinstance(item, (list, tuple)) and len(item) == 2:
-
-                    user_message, assistant_message = item
-
-                    if user_message:
-                        contents.append(
-                            types.Content(
-                                role="user",
-                                parts=[
-                                    types.Part(
-                                        text=str(user_message)
-                                    )
-                                ],
-                            )
-                        )
-
-                    if assistant_message:
-                        contents.append(
-                            types.Content(
-                                role="model",
-                                parts=[
-                                    types.Part(
-                                        text=str(assistant_message)
-                                    )
-                                ],
-                            )
-                        )
-
-        # Current message
         contents.append(
             types.Content(
-                role="user",
+                role=gemini_role,
                 parts=[
                     types.Part(
-                        text=message.strip()
+                        text=message["content"]
                     )
                 ],
             )
         )
 
-        response = client.models.generate_content(
-            model=model_name,
-            contents=contents,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_INSTRUCTION,
-                temperature=0.8,
-                top_p=0.95,
-                max_output_tokens=4096,
-            ),
-        )
+    # --------------------------------------------------------
+    # Generate response
+    # --------------------------------------------------------
 
-        if not response or not response.text:
-            return "JARVIS received an empty response."
+    with st.chat_message("assistant"):
 
-        return response.text.strip()
+        try:
 
-    except Exception as e:
+            response = (
+                st.session_state.client
+                .models
+                .generate_content(
+                    model=model_name,
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        system_instruction=SYSTEM_INSTRUCTION,
+                        temperature=0.8,
+                        top_p=0.95,
+                        max_output_tokens=4096,
+                    ),
+                )
+            )
 
-        return (
-            "⚠️ **JARVIS ERROR**\n\n"
-            "Something went wrong while communicating with Gemini.\n\n"
-            f"`{str(e)}`"
-        )
+            if response and response.text:
 
+                answer = response.text.strip()
 
-# ============================================================
-# CSS
-# ============================================================
+                st.markdown(answer)
 
-CUSTOM_CSS = """
-body {
-    background:
-        radial-gradient(
-            circle at top right,
-            #082d36 0%,
-            transparent 35%
-        ),
-        radial-gradient(
-            circle at bottom left,
-            #071b2c 0%,
-            transparent 40%
-        ),
-        #05080f !important;
+                st.session_state.messages.append(
+                    {
+                        "role": "assistant",
+                        "content": answer,
+                    }
+                )
 
-    color: #dffffb !important;
+            else:
 
-    font-family:
-        "JetBrains Mono",
-        "Fira Code",
-        Consolas,
-        monospace !important;
-}
+                st.error(
+                    "Gemini returned an empty response."
+                )
 
+        except Exception as e:
 
-.gradio-container {
-    max-width: 1400px !important;
-    margin: auto !important;
-}
+            st.error(
+                "JARVIS encountered an error while "
+                "communicating with Gemini."
+            )
 
-
-/* =========================
-   HEADER
-========================= */
-
-#jarvis-header {
-    text-align: center;
-    padding: 20px;
-}
-
-#jarvis-header h1 {
-    color: #00ffe1 !important;
-
-    font-size: 36px !important;
-
-    letter-spacing: 6px;
-
-    text-shadow:
-        0 0 5px #00ffe1,
-        0 0 15px #00ffe1,
-        0 0 35px rgba(0,255,225,.4);
-}
-
-#jarvis-header p {
-    color: #66838b !important;
-
-    font-size: 12px;
-
-    letter-spacing: 2px;
-}
-
-
-/* =========================
-   SIDEBAR
-========================= */
-
-#system-panel {
-    background: rgba(3,10,18,.95) !important;
-
-    border-right:
-        1px solid rgba(0,255,225,.15) !important;
-}
-
-#system-title {
-    color: #00ffe1 !important;
-
-    font-size: 18px;
-
-    letter-spacing: 3px;
-
-    margin-bottom: 20px;
-}
-
-
-/* =========================
-   STATUS
-========================= */
-
-#status {
-    text-align: center;
-
-    font-weight: bold;
-
-    letter-spacing: 2px;
-
-    padding: 10px;
-
-    border-radius: 8px;
-
-    background: rgba(0,255,225,.04);
-
-    border:
-        1px solid rgba(0,255,225,.15);
-}
-
-
-/* =========================
-   CHAT
-========================= */
-
-.chatbot {
-    background:
-        rgba(3,10,18,.9) !important;
-
-    border:
-        1px solid rgba(0,255,225,.18) !important;
-
-    border-radius: 18px !important;
-
-    box-shadow:
-        0 0 30px rgba(0,255,225,.06) !important;
-}
-
-
-/* =========================
-   INPUT
-========================= */
-
-textarea {
-    background: #050c14 !important;
-
-    color: #dffffb !important;
-
-    border:
-        1px solid rgba(0,255,225,.25) !important;
-
-    border-radius: 12px !important;
-}
-
-textarea:focus {
-    border-color: #00ffe1 !important;
-
-    box-shadow:
-        0 0 15px rgba(0,255,225,.15) !important;
-}
-
-
-/* =========================
-   BUTTONS
-========================= */
-
-button {
-    transition:
-        .15s ease !important;
-}
-
-button:hover {
-    transform: translateY(-1px);
-
-    box-shadow:
-        0 0 15px rgba(0,255,225,.18) !important;
-}
-
-
-/* =========================
-   FOOTER
-========================= */
-
-#footer {
-    text-align: center;
-
-    color: #3e5961;
-
-    font-size: 10px;
-
-    padding: 10px;
-}
-"""
+            # Useful for debugging in Streamlit logs
+            print(f"Gemini error: {e}")
 
 
 # ============================================================
-# UI
+# FOOTER
 # ============================================================
 
-with gr.Blocks(
-    title="JARVIS AI // SEIF",
-    css=CUSTOM_CSS,
-    theme=gr.themes.Monochrome(
-        primary_hue="cyan",
-        secondary_hue="blue",
-        neutral_hue="slate",
-    ),
-) as demo:
-
-    # -----------------------------
-    # HEADER
-    # -----------------------------
-
-    gr.HTML(
-        """
-        <div id="jarvis-header">
-
-            <h1>JARVIS AI</h1>
-
-            <p>
-                PERSONAL INTELLIGENCE SYSTEM //
-                GEMINI POWERED
-            </p>
-
-        </div>
-        """
-    )
-
-    # -----------------------------
-    # SIDEBAR
-    # -----------------------------
-
-    with gr.Sidebar(
-        position="left",
-        width=320,
-        open=True,
-        elem_id="system-panel",
-    ):
-
-        gr.Markdown(
-            "## SYSTEM",
-            elem_id="system-title",
-        )
-
-        api_key = gr.Textbox(
-            label="Gemini API Key",
-            placeholder="AIza...",
-            type="password",
-            info="Your key is entered here and is not stored in the source code.",
-        )
-
-        connect_button = gr.Button(
-            "⚡ CONNECT JARVIS",
-            variant="primary",
-        )
-
-        status = gr.Textbox(
-            value="🔴 DISCONNECTED",
-            label="SYSTEM STATUS",
-            interactive=False,
-            elem_id="status",
-        )
-
-        status_message = gr.Markdown(
-            "Enter your Gemini API key to initialize JARVIS."
-        )
-
-        gr.Markdown("---")
-
-        model = gr.Dropdown(
-            choices=[
-                "gemini-2.5-flash",
-                "gemini-2.5-pro",
-            ],
-            value="gemini-2.5-flash",
-            label="AI MODEL",
-        )
-
-        gr.Markdown(
-            """
-            ### JARVIS CORE
-
-            **Status:** Awaiting connection
-
-            **Engine:** Google Gemini
-
-            **Mode:** Personal Assistant
-
-            **Interface:** Cyberpunk Terminal
-            """
-        )
-
-        gr.Markdown("---")
-
-        gr.Markdown(
-            """
-            ⚠️ **Security**
-
-            Never share your API key with anyone.
-
-            For a public Hugging Face Space,
-            environment Secrets are safer than
-            entering a key through the UI.
-            """
-        )
-
-    # -----------------------------
-    # CHAT
-    # -----------------------------
-
-    chatbot = gr.Chatbot(
-        label="JARVIS",
-        height=650,
-        bubble_full_width=False,
-        show_copy_button=True,
-        render_markdown=True,
-    )
-
-    textbox = gr.Textbox(
-        placeholder="Talk to JARVIS...",
-        show_label=False,
-        lines=2,
-    )
-
-    with gr.Row():
-
-        send = gr.Button(
-            "SEND",
-            variant="primary",
-            scale=2,
-        )
-
-        clear = gr.Button(
-            "CLEAR",
-            scale=1,
-        )
-
-    # -----------------------------
-    # EVENTS
-    # -----------------------------
-
-    connect_button.click(
-        fn=connect_api,
-        inputs=[api_key],
-        outputs=[status, status_message],
-    )
-
-    textbox.submit(
-        fn=predict,
-        inputs=[textbox, chatbot, model],
-        outputs=chatbot,
-    ).then(
-        lambda: "",
-        outputs=textbox,
-    )
-
-    send.click(
-        fn=predict,
-        inputs=[textbox, chatbot, model],
-        outputs=chatbot,
-    ).then(
-        lambda: "",
-        outputs=textbox,
-    )
-
-    clear.click(
-        lambda: [],
-        outputs=chatbot,
-    )
-
-    # -----------------------------
-    # FOOTER
-    # -----------------------------
-
-    gr.HTML(
-        """
-        <div id="footer">
-            JARVIS ONLINE // GEMINI CORE //
-            SEIF'S PROJECT
-        </div>
-        """
-    )
-
-
-# ============================================================
-# LAUNCH
-# ============================================================
-
-if __name__ == "__main__":
-    demo.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-    )
+st.markdown(
+    """
+    <div class="jarvis-footer">
+        JARVIS ONLINE // GEMINI CORE // SEIF'S PROJECT
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
